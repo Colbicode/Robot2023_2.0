@@ -43,6 +43,7 @@ public class Robot extends TimedRobot {
   private final CANSparkMax rightMotor2 = new CANSparkMax(4, MotorType.kBrushless);
   private final MotorControllerGroup rightDriveMotors = new MotorControllerGroup(rightMotor1, rightMotor2);
 
+  //Drive Train Controller
   private final DifferentialDrive driveTrain = new DifferentialDrive(leftDriveMotors, rightDriveMotors);
 
   //DoubleSolenoids on the big arm. "firstStage" is the big one and "secondStage" is the small one. 
@@ -80,7 +81,6 @@ public class Robot extends TimedRobot {
     exstentionMotor.setInverted(true);
     tooth1.setInverted(false);
     tooth2.setInverted(true);
-  
   }
 
   /**
