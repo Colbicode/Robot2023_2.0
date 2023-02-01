@@ -10,15 +10,11 @@ import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.PneumaticsModuleType;
-import edu.wpi.first.wpilibj.Solenoid;
-import edu.wpi.first.wpilibj.PneumaticHub;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.motorcontrol.MotorControllerGroup;
-import edu.wpi.first.wpilibj.motorcontrol.Spark;
-import edu.wpi.first.wpilibj.motorcontrol.Talon;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
@@ -47,8 +43,7 @@ public class Robot extends TimedRobot {
   private final CANSparkMax rightMotor2 = new CANSparkMax(4, MotorType.kBrushless);
   private final MotorControllerGroup rightDriveMotors = new MotorControllerGroup(rightMotor1, rightMotor2);
 
-  //PneumaticHub for the solenoids.
-  private final PneumaticHub pneumaticHub = new PneumaticHub(8);
+  private final DifferentialDrive driveTrain = new DifferentialDrive(leftDriveMotors, rightDriveMotors);
 
   //DoubleSolenoids on the big arm. "firstStage" is the big one and "secondStage" is the small one. 
   //"clamp" will control the clamping motion of the intake
@@ -64,7 +59,8 @@ public class Robot extends TimedRobot {
   private final CANSparkMax tooth2 = new CANSparkMax(7, MotorType.kBrushed);
   private final MotorControllerGroup teeth = new MotorControllerGroup(tooth1, tooth2);
 
-
+  //provides the status of the intake. False is open, and true is closed.
+  public boolean intakeStatus = false;
   /**
    * This function is run when the robot is first started up and should be used for any
    * initialization code.
@@ -160,22 +156,15 @@ public class Robot extends TimedRobot {
     }
   }
 
-  //Intake Teeth Rotation
-  public void intakeTeethRotation(boolean status) {
-    if (status) {
-      teeth.set(0.75);
-    } else {
-      teeth.set(0);
-    }
-  }
-
   //Clamp Action
-  public void bite(boolean status) {
+  public void bite(Boolean status) {
     if (status) {
       clamp.set(Value.kForward);
+      teeth.set(0.75);
     } else {
       clamp.set(Value.kReverse);
-    }
+      teeth.set(0);
+    }       
   }
 
 
@@ -184,9 +173,27 @@ public class Robot extends TimedRobot {
   public void teleopPeriodic() {
     
     //Sets up the drive train. Left stick controls the forward and back. Right controls turning.
-    DifferentialDrive.arcadeDriveIK(blueController.getRawAxis(1), blueController.getRawAxis(4), isTeleop());
+    driveTrain.arcadeDrive(blueController.getRawAxis(1), blueController.getRawAxis(4));
 
+    
+    //This bunch of if then statements is the button map. Blue controller is operator
+    if (redController.getRawButton(0)) { // Button ✖️. Scoring position
+      armLevel(2);
+    } else if (redController.getRawButton(1)) { // Button ⭕. Intake level
+      armLevel(1);
+    } else if (redController.getRawButton(2)) { // Button 🟪. Starting configeration
+      armLevel(0);
+    } else if (redController.getRawButton(3)) { // Button 🔺. No purpose at the moment.
+      
+    } else if (redController.getRawButton(4)) { // Button L1. Intake is open
+      intakeStatus = false;
+    } else if (redController.getRawButton(5)) { // Button R1. Intake is closed
+      intakeStatus = true;
+    } else if (redController.getRawButton(6)) { // Button SHARE.
 
+    }
+
+    bite(intakeStatus);
   }
 
   /** This function is called once when the robot is disabled. */
