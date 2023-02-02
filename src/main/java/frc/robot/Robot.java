@@ -2,6 +2,10 @@
 // Open Source Software; you can modify and/or share it under the terms of
 // the WPILib BSD license file in the root directory of this project.
 
+/* Team 3288 robot
+ * Programed by Brandon, Colby, and Mr. N
+ */
+
 package frc.robot;
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkMax.IdleMode;
@@ -13,6 +17,7 @@ import edu.wpi.first.wpilibj.PneumaticsModuleType;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
+import edu.wpi.first.wpilibj.GenericHID.RumbleType;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.motorcontrol.MotorControllerGroup;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
@@ -23,12 +28,17 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
  * each mode, as described in the TimedRobot documentation. If you change the name of this class or
  * the package after creating this project, you must also update the build.gradle file in the
  * project.
+ * 
+ * Base code from WPILib don't change
  */
 public class Robot extends TimedRobot {
   private static final String kDefaultAuto = "Default";
   private static final String kCustomAuto = "My Auto";
   private String m_autoSelected;
   private final SendableChooser<String> m_chooser = new SendableChooser<>();
+
+  //The code above is WPIlib
+
 
   //The controllers. Blue controller is driver. Red is operator.
   private final GenericHID redController = new GenericHID(1);
@@ -59,8 +69,8 @@ public class Robot extends TimedRobot {
   private final CANSparkMax tooth2 = new CANSparkMax(7, MotorType.kBrushed);
   private final MotorControllerGroup teeth = new MotorControllerGroup(tooth1, tooth2);
 
-  //provides the status of the intake. False is open, and true is closed.
-  public boolean intakeStatus = false;
+  //provides the status of the intake. False is open, and true is closed. Starts in closed position to hold game piece
+  public boolean intakeStatus = true;
   /**
    * This function is run when the robot is first started up and should be used for any
    * initialization code.
@@ -80,6 +90,12 @@ public class Robot extends TimedRobot {
     exstentionMotor.setInverted(true);
     tooth1.setInverted(false);
     tooth2.setInverted(true);
+
+    //Makes the intake closed at the start of the match
+    intakeStatus = true;
+
+    //Make sure that it is in starting configuration.
+    armLevel(0);
   
   }
 
@@ -129,14 +145,14 @@ public class Robot extends TimedRobot {
   /** This function is called once when teleop is enabled. */
   @Override
   public void teleopInit() {
-    //Sets motors IdleMode to coast.
+    //Sets motors IdleMode to coast. Need to add 3 second wait. Figure it out, take your time. Maybe use boolean for brakes.
     leftMotor1.setIdleMode(IdleMode.kCoast);
     leftMotor2.setIdleMode(IdleMode.kCoast);
     rightMotor1.setIdleMode(IdleMode.kCoast);
     rightMotor2.setIdleMode(IdleMode.kCoast);
   }
 
-  //Up and down motion of the arm
+  //Up and down motion of the arm. Need to figure out how to start with this.
   public void armLevel(int level) {
     // 0 starting configeration, 1 ground level, 2 scoring level.
     switch(level){
@@ -158,10 +174,10 @@ public class Robot extends TimedRobot {
 
   //Clamp Action
   public void bite(Boolean status) {
-    if (status) {
+    if (status) {//closed with game peice
       clamp.set(Value.kForward);
       teeth.set(0.75);
-    } else {
+    } else {//Open
       clamp.set(Value.kReverse);
       teeth.set(0);
     }       
@@ -173,9 +189,11 @@ public class Robot extends TimedRobot {
   public void teleopPeriodic() {
     
     //Sets up the drive train. Left stick controls the forward and back. Right controls turning.
+    //Want cubic function. currently linear. Look up deadbands
     driveTrain.arcadeDrive(blueController.getRawAxis(1), blueController.getRawAxis(4));
 
-    
+    //need control for exstention motor
+
     //This bunch of if then statements is the button map. Blue controller is operator
     if (redController.getRawButton(0)) { // Button ✖️. Scoring position
       armLevel(2);
