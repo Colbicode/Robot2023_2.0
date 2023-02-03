@@ -1,0 +1,9 @@
+THE GOAL: CONE!
+
+when AUTONOMOUS IS ACTIVATED {
+    set Arm to Scoring Position
+    extend Arm to High Node
+    open Intake
+    retract Arm
+    drive Backwards until Out of Community
+}

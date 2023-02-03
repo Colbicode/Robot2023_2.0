@@ -2,8 +2,13 @@
 // Open Source Software; you can modify and/or share it under the terms of
 // the WPILib BSD license file in the root directory of this project.
 
+/* Team 3288 robot
+ * Programed by Brandon, Colby, and Mr. N
+ */
+
 package frc.robot;
 import com.revrobotics.CANSparkMax;
+import com.revrobotics.RelativeEncoder;
 import com.revrobotics.CANSparkMax.IdleMode;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
@@ -13,6 +18,7 @@ import edu.wpi.first.wpilibj.PneumaticsModuleType;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
+import edu.wpi.first.wpilibj.GenericHID.RumbleType;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.motorcontrol.MotorControllerGroup;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
@@ -23,6 +29,8 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
  * each mode, as described in the TimedRobot documentation. If you change the name of this class or
  * the package after creating this project, you must also update the build.gradle file in the
  * project.
+ * 
+ * Base code from WPILib don't change
  */
 public class Robot extends TimedRobot {
   private static final String kDefaultAuto = "Default";
@@ -30,10 +38,14 @@ public class Robot extends TimedRobot {
   private String m_autoSelected;
   private final SendableChooser<String> m_chooser = new SendableChooser<>();
 
+  //The code above is WPIlib
+
+
   //The controllers. Blue controller is driver. Red is operator.
   private final GenericHID redController = new GenericHID(1);
   private final GenericHID blueController = new GenericHID(0);
 
+  
   //Drive motors
   private final CANSparkMax leftMotor1 = new CANSparkMax(1, MotorType.kBrushless);
   private final CANSparkMax leftMotor2 = new CANSparkMax(2, MotorType.kBrushless);
@@ -42,8 +54,14 @@ public class Robot extends TimedRobot {
   private final CANSparkMax rightMotor1 = new CANSparkMax(3, MotorType.kBrushless);
   private final CANSparkMax rightMotor2 = new CANSparkMax(4, MotorType.kBrushless);
   private final MotorControllerGroup rightDriveMotors = new MotorControllerGroup(rightMotor1, rightMotor2);
+    //Encoders
+  private final RelativeEncoder leftMotor1Encoder = leftMotor1.getEncoder();
+  private final RelativeEncoder leftMotor2Encoder = leftMotor2.getEncoder();
+  private final RelativeEncoder rightMotor1Encoder = rightMotor1.getEncoder();
+  private final RelativeEncoder rightMotor2Encoder = rightMotor2.getEncoder();
+  
 
-  //Drive Train Controller
+  //Drive Train
   private final DifferentialDrive driveTrain = new DifferentialDrive(leftDriveMotors, rightDriveMotors);
 
   //DoubleSolenoids on the big arm. "firstStage" is the big one and "secondStage" is the small one. 
@@ -53,15 +71,30 @@ public class Robot extends TimedRobot {
   private final DoubleSolenoid clamp = new DoubleSolenoid(PneumaticsModuleType.REVPH, 5, 6);
 
   //Motor for exstention of the arm.
-  private final CANSparkMax exstentionMotor = new CANSparkMax(5, MotorType.kBrushed);
+  private final CANSparkMax armExtensionMotor = new CANSparkMax(5, MotorType.kBrushed);
+    //Encoder
+  private final RelativeEncoder armExtensionEncoder = armExtensionMotor.getEncoder();
 
   //Intake motors
   private final CANSparkMax tooth1 = new CANSparkMax(6, MotorType.kBrushed);
   private final CANSparkMax tooth2 = new CANSparkMax(7, MotorType.kBrushed);
   private final MotorControllerGroup teeth = new MotorControllerGroup(tooth1, tooth2);
 
-  //provides the status of the intake. False is open, and true is closed.
-  public boolean intakeStatus = false;
+  //provides the status of the intake. False is open, and true is closed. Starts in closed position to hold game piece
+  public boolean intakeStatus = true;
+
+  //Distance of middle scoring level
+  public final double middleNodeDistance = 0;
+
+  //Distance of the high node
+  public final double highNodeDistance = 1;
+
+  //sets the distance to travel to get out of community in autonomous
+  public final double distanceOutOfCommunity = 30; //subject to change.
+
+  //set the distance to travel from out of community to balance
+  public final double distanceToBalance = 15; //subject to change.
+
   /**
    * This function is run when the robot is first started up and should be used for any
    * initialization code.
@@ -78,9 +111,15 @@ public class Robot extends TimedRobot {
     rightMotor1.setInverted(true);
     rightMotor2.setInverted(true);
 
-    exstentionMotor.setInverted(true);
+    armExtensionMotor.setInverted(true);
     tooth1.setInverted(false);
     tooth2.setInverted(true);
+
+    //Makes the intake closed at the start of the match
+    intakeStatus = true;
+
+    //Make sure that it is in starting configuration.
+    armLevel(0);
   }
 
   /**
@@ -112,6 +151,28 @@ public class Robot extends TimedRobot {
     System.out.println("Auto selected: " + m_autoSelected);
   }
 
+  public void scoreDriveBack() {
+    armLevel(2); //arm to scoring level
+    
+    while((armExtensionEncoder.getPosition() < highNodeDistance) && (Timer.getFPGATimestamp() < 3)) { //While the arm is shorter than the high node distance and time is more than 3 seconds.
+      armExtensionMotor.set(0.75); //Extends arm at speed of 0.75.
+    }
+
+    bite(false);
+    
+    while((armExtensionEncoder.getPosition() < 1) && (Timer.getFPGATimestamp() < 6 )) { //retracts the arm until encoder postion is less than or time is 6sec.
+      armExtensionMotor.set(-0.75);
+    }
+
+    while((leftMotor1Encoder.getPosition() < distanceOutOfCommunity) && (Timer.getFPGATimestamp() < 12)) { //drives backward out of the community.
+      driveTrain.arcadeDrive(-0.75, 0);
+    }
+  }
+
+  public void scoreDriveBackBalance() {
+    scoreDriveBack();
+  }
+
   /** This function is called periodically during autonomous. */
   @Override
   public void autonomousPeriodic() {
@@ -129,14 +190,14 @@ public class Robot extends TimedRobot {
   /** This function is called once when teleop is enabled. */
   @Override
   public void teleopInit() {
-    //Sets motors IdleMode to coast.
+    //Sets motors IdleMode to coast. Need to add 3 second wait. Figure it out, take your time. Maybe use boolean for brakes.
     leftMotor1.setIdleMode(IdleMode.kCoast);
     leftMotor2.setIdleMode(IdleMode.kCoast);
     rightMotor1.setIdleMode(IdleMode.kCoast);
     rightMotor2.setIdleMode(IdleMode.kCoast);
   }
 
-  //Up and down motion of the arm
+  //Up and down motion of the arm. Need to figure out how to start with this.
   public void armLevel(int level) {
     // 0 starting configeration, 1 ground level, 2 scoring level.
     switch(level){
@@ -156,12 +217,25 @@ public class Robot extends TimedRobot {
     }
   }
 
+  //This is the method that controls the armExtensionMotor
+  public void armExtension(double speed) {
+
+    armExtensionMotor.set(speed);
+
+    if(armExtensionEncoder.getPosition() == middleNodeDistance) {
+      redController.setRumble(RumbleType.kLeftRumble, 1);
+    }
+    else if (armExtensionEncoder.getPosition() == highNodeDistance){
+      redController.setRumble(RumbleType.kBothRumble, 1);
+    }
+  }
+
   //Clamp Action
   public void bite(Boolean status) {
-    if (status) {
+    if (status) { //Closed with game peice
       clamp.set(Value.kForward);
       teeth.set(0.75);
-    } else {
+    } else { //Open
       clamp.set(Value.kReverse);
       teeth.set(0);
     }       
@@ -173,9 +247,11 @@ public class Robot extends TimedRobot {
   public void teleopPeriodic() {
     
     //Sets up the drive train. Left stick controls the forward and back. Right controls turning.
+    //Want cubic function. currently linear. Look up deadbands
     driveTrain.arcadeDrive(blueController.getRawAxis(1), blueController.getRawAxis(4));
 
-    
+    //need control for exstention motor
+
     //This bunch of if then statements is the button map. Blue controller is operator
     if (redController.getRawButton(0)) { // Button ✖️. Scoring position
       armLevel(2);
@@ -192,6 +268,8 @@ public class Robot extends TimedRobot {
     } else if (redController.getRawButton(6)) { // Button SHARE.
 
     }
+
+    armExtension(redController.getRawAxis(1));
 
     bite(intakeStatus);
   }
