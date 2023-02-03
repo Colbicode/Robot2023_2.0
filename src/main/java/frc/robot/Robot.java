@@ -8,6 +8,7 @@
 
 package frc.robot;
 import com.revrobotics.CANSparkMax;
+import com.revrobotics.RelativeEncoder;
 import com.revrobotics.CANSparkMax.IdleMode;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
@@ -44,6 +45,7 @@ public class Robot extends TimedRobot {
   private final GenericHID redController = new GenericHID(1);
   private final GenericHID blueController = new GenericHID(0);
 
+  
   //Drive motors
   private final CANSparkMax leftMotor1 = new CANSparkMax(1, MotorType.kBrushless);
   private final CANSparkMax leftMotor2 = new CANSparkMax(2, MotorType.kBrushless);
@@ -52,7 +54,14 @@ public class Robot extends TimedRobot {
   private final CANSparkMax rightMotor1 = new CANSparkMax(3, MotorType.kBrushless);
   private final CANSparkMax rightMotor2 = new CANSparkMax(4, MotorType.kBrushless);
   private final MotorControllerGroup rightDriveMotors = new MotorControllerGroup(rightMotor1, rightMotor2);
+    //Encoders
+  private final RelativeEncoder leftMotor1Encoder = leftMotor1.getEncoder();
+  private final RelativeEncoder leftMotor2Encoder = leftMotor2.getEncoder();
+  private final RelativeEncoder rightMotor1Encoder = rightMotor1.getEncoder();
+  private final RelativeEncoder rightMotor2Encoder = rightMotor2.getEncoder();
+  
 
+  //The Drive Train
   private final DifferentialDrive driveTrain = new DifferentialDrive(leftDriveMotors, rightDriveMotors);
 
   //DoubleSolenoids on the big arm. "firstStage" is the big one and "secondStage" is the small one. 
@@ -62,7 +71,9 @@ public class Robot extends TimedRobot {
   private final DoubleSolenoid clamp = new DoubleSolenoid(PneumaticsModuleType.REVPH, 5, 6);
 
   //Motor for exstention of the arm.
-  private final CANSparkMax exstentionMotor = new CANSparkMax(5, MotorType.kBrushed);
+  private final CANSparkMax armExtensionMotor = new CANSparkMax(5, MotorType.kBrushed);
+    //Encoder
+  private final RelativeEncoder armExtensionEncoder = armExtensionMotor.getEncoder();
 
   //Intake motors
   private final CANSparkMax tooth1 = new CANSparkMax(6, MotorType.kBrushed);
@@ -71,6 +82,19 @@ public class Robot extends TimedRobot {
 
   //provides the status of the intake. False is open, and true is closed. Starts in closed position to hold game piece
   public boolean intakeStatus = true;
+
+  //Distance of middle scoring level
+  public final double middleNodeDistance = 0;
+
+  //Distance of the high node
+  public final double highNodeDistance = 1;
+
+  //sets the distance to travel to get out of community in autonomous
+  public final double distanceOutOfCommunity = 30; //subject to change.
+
+  //set the distance to travel from out of community to balance
+  public final double distanceToBalance = 15; //subject to change.
+
   /**
    * This function is run when the robot is first started up and should be used for any
    * initialization code.
@@ -87,7 +111,7 @@ public class Robot extends TimedRobot {
     rightMotor1.setInverted(true);
     rightMotor2.setInverted(true);
 
-    exstentionMotor.setInverted(true);
+    armExtensionMotor.setInverted(true);
     tooth1.setInverted(false);
     tooth2.setInverted(true);
 
@@ -96,6 +120,9 @@ public class Robot extends TimedRobot {
 
     //Make sure that it is in starting configuration.
     armLevel(0);
+
+    //This sets up the encoder of the arm extension
+    //armExtensionEncoder = extensionMotor.getEncoder();
   
   }
 
@@ -126,6 +153,28 @@ public class Robot extends TimedRobot {
     m_autoSelected = m_chooser.getSelected();
     // m_autoSelected = SmartDashboard.getString("Auto Selector", kDefaultAuto);
     System.out.println("Auto selected: " + m_autoSelected);
+  }
+
+  public void scoreDriveBack() {
+    armLevel(2); //arm to scoring level
+    
+    while((armExtensionEncoder.getPosition() < highNodeDistance) && (Timer.getFPGATimestamp() < 3)) { //While the arm is shorter than the high node distance and time is more than 3 seconds.
+      armExtensionMotor.set(0.75); //Extends arm at speed of 0.75.
+    }
+
+    bite(false);
+    
+    while((armExtensionEncoder.getPosition() < 1) && (Timer.getFPGATimestamp() < 6 )) { //retracts the arm until encoder postion is less than or time is 6sec.
+      armExtensionMotor.set(-0.75);
+    }
+
+    while((leftMotor1Encoder.getPosition() < distanceOutOfCommunity) && (Timer.getFPGATimestamp() < 12)) { //drives backward out of the community.
+      driveTrain.arcadeDrive(-0.75, 0);
+    }
+  }
+
+  public void scoreDriveBackBalance() {
+    scoreDriveBack();
   }
 
   /** This function is called periodically during autonomous. */
@@ -172,12 +221,25 @@ public class Robot extends TimedRobot {
     }
   }
 
+  //This is the method that controls the armExtensionMotor
+  public void armExtension(double speed) {
+
+    armExtensionMotor.set(speed);
+
+    if(armExtensionEncoder.getPosition() == middleNodeDistance) {
+      redController.setRumble(RumbleType.kLeftRumble, 1);
+    }
+    else if (armExtensionEncoder.getPosition() == highNodeDistance){
+      redController.setRumble(RumbleType.kBothRumble, 1);
+    }
+  }
+
   //Clamp Action
   public void bite(Boolean status) {
-    if (status) {//closed with game peice
+    if (status) { //Closed with game peice
       clamp.set(Value.kForward);
       teeth.set(0.75);
-    } else {//Open
+    } else { //Open
       clamp.set(Value.kReverse);
       teeth.set(0);
     }       
@@ -210,6 +272,8 @@ public class Robot extends TimedRobot {
     } else if (redController.getRawButton(6)) { // Button SHARE.
 
     }
+
+    armExtension(redController.getRawAxis(1));
 
     bite(intakeStatus);
   }
