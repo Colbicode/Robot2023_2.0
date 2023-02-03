@@ -61,7 +61,7 @@ public class Robot extends TimedRobot {
   private final RelativeEncoder rightMotor2Encoder = rightMotor2.getEncoder();
   
 
-  //The Drive Train
+  //Drive Train
   private final DifferentialDrive driveTrain = new DifferentialDrive(leftDriveMotors, rightDriveMotors);
 
   //DoubleSolenoids on the big arm. "firstStage" is the big one and "secondStage" is the small one. 
@@ -120,10 +120,6 @@ public class Robot extends TimedRobot {
 
     //Make sure that it is in starting configuration.
     armLevel(0);
-
-    //This sets up the encoder of the arm extension
-    //armExtensionEncoder = extensionMotor.getEncoder();
-  
   }
 
   /**
