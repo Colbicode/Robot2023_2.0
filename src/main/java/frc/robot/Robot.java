@@ -13,14 +13,18 @@ import com.revrobotics.CANSparkMax.IdleMode;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
 import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.PneumaticsModuleType;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.ADIS16470_IMU.IMUAxis;
 import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import edu.wpi.first.wpilibj.GenericHID.RumbleType;
+import edu.wpi.first.wpilibj.SPI.Port;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
+import edu.wpi.first.wpilibj.ADIS16470_IMU;
 import edu.wpi.first.wpilibj.ADXRS450_Gyro;
 import edu.wpi.first.wpilibj.motorcontrol.MotorControllerGroup;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
@@ -84,8 +88,10 @@ public class Robot extends TimedRobot {
   private final MotorControllerGroup teeth = new MotorControllerGroup(tooth1, tooth2);
 
   
-  //This is the gyro.
-  private final ADXRS450_Gyro gyro = new ADXRS450_Gyro();
+  //This is the gyro. Sets up the axises. the x axis is the yaw axis, y is the roll, and z is the pitch.
+  private final ADIS16470_IMU yaw = new ADIS16470_IMU(IMUAxis.kX, Port.kMXP, null);
+  private final ADIS16470_IMU pitch = new ADIS16470_IMU(IMUAxis.kZ, Port.kMXP, null);
+  private final ADIS16470_IMU roll = new ADIS16470_IMU(IMUAxis.kY, Port.kMXP, null);
 
   
   /* PID Controllers */
@@ -202,6 +208,11 @@ public class Robot extends TimedRobot {
     armExtensionEncoder.setPosition(0);
     leftMotor1Encoder.setPosition(0);
     rightMotor1Encoder.setPosition(0);
+
+    //calibrates the gyro
+    yaw.reset();
+    pitch.reset();
+    
   }
 
 
@@ -346,7 +357,11 @@ public class Robot extends TimedRobot {
 
     //drives back to the charging station.
     driveDistance(distanceToBalance);
-    //Would like to use the gyro to balance.
+    
+    //Gets the gyro numbers
+    
+
+    //Using the gyro to ballance
   }
 
   /* Method that is an autonomous routine. This would be selected in autonomous periotic.
@@ -358,8 +373,8 @@ public class Robot extends TimedRobot {
     scoreDriveBack();
 
     //turns the robot to the cone 
-    while((gyro.getAngle() < 90) && (Timer.getFPGATimestamp() < 5)) {
-      driveTrain.arcadeDrive(0, angleController.calculate(gyro.getAngle(), angleToGrabCone));
+    while((yaw.getAngle() < 90) && (Timer.getFPGATimestamp() < 5)) {
+      driveTrain.arcadeDrive(0, angleController.calculate(yaw.getAngle(), angleToGrabCone));
     }
     
     //drives into the cone
@@ -369,8 +384,8 @@ public class Robot extends TimedRobot {
     bite(true);
 
     //turns back to driver's station
-    while((gyro.getAngle() < 135) && (Timer.getFPGATimestamp() < 5)){
-      driveTrain.arcadeDrive(0, angleController.calculate(gyro.getAngle(), angleToDriveBack));
+    while((yaw.getAngle() < 135) && (Timer.getFPGATimestamp() < 5)){
+      driveTrain.arcadeDrive(0, angleController.calculate(yaw.getAngle(), angleToDriveBack));
     }
 
     //drives back to driver station and scores
@@ -446,6 +461,10 @@ public class Robot extends TimedRobot {
     armExtension(redController.getRawAxis(1), isOverride);//controls the extension of the arm
 
     bite(intakeStatus);//controls the intake. false is open, true is closed
+
+    //sends values to our smartdashbourd.
+    SmartDashboard.putNumber("Yaw angle", yaw.getAngle());
+    SmartDashboard.putNumber("", kDefaultPeriod);
   }
 
   /* This function is called once when the robot is disabled. */
