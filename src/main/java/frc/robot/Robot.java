@@ -25,6 +25,7 @@ import edu.wpi.first.wpilibj.GenericHID.RumbleType;
 import edu.wpi.first.wpilibj.SPI.Port;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.ADIS16470_IMU;
+import edu.wpi.first.wpilibj.ADXRS450_Gyro;
 import edu.wpi.first.wpilibj.motorcontrol.MotorControllerGroup;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -53,19 +54,19 @@ public class Robot extends TimedRobot {
 
   
   // Drive motors
-  private final CANSparkMax leftMotor1 = new CANSparkMax(1, MotorType.kBrushless);
-  private final CANSparkMax leftMotor2 = new CANSparkMax(2, MotorType.kBrushless);
-  private final MotorControllerGroup leftDriveMotors = new MotorControllerGroup(leftMotor1, leftMotor2);
+  private final CANSparkMax frontLeftMotor = new CANSparkMax(1, MotorType.kBrushless);
+  private final CANSparkMax backLeftMotor = new CANSparkMax(2, MotorType.kBrushless);
+  private final MotorControllerGroup leftDriveMotors = new MotorControllerGroup(frontLeftMotor, backLeftMotor);
 
-  private final CANSparkMax rightMotor1 = new CANSparkMax(3, MotorType.kBrushless);
-  private final CANSparkMax rightMotor2 = new CANSparkMax(4, MotorType.kBrushless);
-  private final MotorControllerGroup rightDriveMotors = new MotorControllerGroup(rightMotor1, rightMotor2);
+  private final CANSparkMax frontRightMotor = new CANSparkMax(3, MotorType.kBrushless);
+  private final CANSparkMax backRightMotor = new CANSparkMax(4, MotorType.kBrushless);
+  private final MotorControllerGroup rightDriveMotors = new MotorControllerGroup(frontRightMotor, backRightMotor);
 
   //Drive Motor Encoders
-  private final RelativeEncoder leftMotor1Encoder = leftMotor1.getEncoder();
-  private final RelativeEncoder leftMotor2Encoder = leftMotor2.getEncoder();
-  private final RelativeEncoder rightMotor1Encoder = rightMotor1.getEncoder();
-  private final RelativeEncoder rightMotor2Encoder = rightMotor2.getEncoder();
+  private final RelativeEncoder frontLeftMotorEncoder = frontLeftMotor.getEncoder(); //Front Left Motor Controller
+  private final RelativeEncoder backLeftMotorEncoder = backLeftMotor.getEncoder(); //Back Left Motor Controller
+  private final RelativeEncoder frontRightMotorEncoder = frontRightMotor.getEncoder(); //Front Right Motor Controller
+  private final RelativeEncoder backRightMotorEncoder = backRightMotor.getEncoder(); //Front Back Motor Controller
   
   //The Drive Train
   private final DifferentialDrive driveTrain = new DifferentialDrive(leftDriveMotors, rightDriveMotors);
@@ -102,34 +103,40 @@ public class Robot extends TimedRobot {
 
   /* Variables for autonomous */
   //set the distance to travel from out of community to balance
-  public final double distanceToBalance = 15; //subject to change.
+  public final double distanceToBalance = 102; //subject to change.
 
   //Angle needed to turn and grab the cone after driving back. 
-  public final double angleToGrabCone = 0; //subject to change.
+  public final double angleToGrabCone = 90; //subject to change.
   
   //Angle needed to turn and drive back to drive station after grabbing cone.
-  public final double angleToDriveBack = 0; //subject to change.
+  public final double angleToDriveBack = 180; //subject to change.
 
   //Distance to cone.
   public final double coneDistance = 10; //subject to change.
 
+  //sets the distance to travel to get out of community in autonomous
+  public final double distanceOutOfCommunity = 224; //distance to the cones in inches. 18' 8"
+
+  //Max arm distance for manual arm control
+  public final double maxArmExtensionDistance = 48; //NOTE: TBD
 
   /* Other necessary variables */
   //provides the status of the intake. False is open, and true is closed. Starts in closed position to hold game piece
   public boolean intakeStatus = true;
 
   //Distance of middle scoring level. needs to be figured out.
-  public final double middleNodeDistance = 0;
+  public final double middleNodeDistance = 30;
 
-  //Distance of the high node. Needs to be figured
-  public final double highNodeDistance = 1;
-
-  //sets the distance to travel to get out of community in autonomous
-  public final double distanceOutOfCommunity = 30; //subject to change.
+  //Distance of the high node. In inches
+  public final double highNodeDistance = 48;
+  
+  public final double lengthOfRobot = 32; //Length of robot frame for reference.
 
   //set the override 
   public boolean isOverride = false;
 
+  //robot distance traveled per complete rotation of drive motors
+  public final double distancePerRotation = 2.23;
 
   /*
    * This function is run when the robot is first started up and should be used
@@ -144,10 +151,10 @@ public class Robot extends TimedRobot {
     SmartDashboard.putData("Auto choices", m_chooser);
 
     //This is where we change the setInverted properties on the motors.
-    leftMotor1.setInverted(true); //True or false depending on when we test the motors.
-    leftMotor2.setInverted(true);
-    rightMotor1.setInverted(true);
-    rightMotor2.setInverted(true);
+    frontLeftMotor.setInverted(true); //True or false depending on when we test the motors.
+    backLeftMotor.setInverted(true);
+    frontRightMotor.setInverted(true);
+    backRightMotor.setInverted(true);
 
     armExtensionMotor.setInverted(true);
     tooth1.setInverted(false);
@@ -168,10 +175,11 @@ public class Robot extends TimedRobot {
     //set the encoders to 0
     //This sets up the encoder of the arm extension
     armExtensionEncoder.setPosition(0);
-    leftMotor1Encoder.setPosition(0);
-    leftMotor2Encoder.setPosition(0);
-    rightMotor1Encoder.setPosition(0);
-    rightMotor2Encoder.setPosition(0);
+    frontLeftMotorEncoder.setPosition(0);
+    backLeftMotorEncoder.setPosition(0);
+    frontRightMotorEncoder.setPosition(0);
+    backRightMotorEncoder.setPosition(0);
+  
   }
 
   /*
@@ -183,7 +191,26 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotPeriodic() {
+    //Reports game time.
     SmartDashboard.putNumber("Time (seconds)", Timer.getFPGATimestamp());
+
+    //Reports drive motors' encoders' position and distance.
+    SmartDashboard.putNumber("Front Right Motor Encoder Position", frontRightMotorEncoder.getPosition());
+    SmartDashboard.putNumber("Front Right Motor Encoder Distance (rotations*2.23)", frontRightMotorEncoder.getPosition() * distancePerRotation);
+    SmartDashboard.putNumber("Back Right Motor Encoder Position", backRightMotorEncoder.getPosition());
+    SmartDashboard.putNumber("Back Right Motor Encoder Distance (rotations*2.23)", backRightMotorEncoder.getPosition() * distancePerRotation);
+    SmartDashboard.putNumber("Front Left Motor Encoder Position", frontLeftMotorEncoder.getPosition());
+    SmartDashboard.putNumber("Front Left Motor Encoder Distance (rotations*2.23)", frontLeftMotorEncoder.getPosition() * distancePerRotation);
+    SmartDashboard.putNumber("Back Left Motor Encoder Position", backLeftMotorEncoder.getPosition());
+    SmartDashboard.putNumber("Back Left Motor Encoder Distance (rotations*2.23)", backLeftMotorEncoder.getPosition() * distancePerRotation);
+
+    //Reports Gyros' axis angles
+    SmartDashboard.putNumber("Yaw Axis Angle", yaw.getAngle());
+    SmartDashboard.putNumber("Pitch Axis Angle", pitch.getAngle());
+    SmartDashboard.putNumber("Roll Axis Angle", roll.getAngle()); /********* We're on a Roll **********/
+
+    //Reports Arm Motor Encoder Position //Note: Need to calculate distance at some point.
+    SmartDashboard.putNumber("Arm Extension Encoder Position", armExtensionEncoder.getPosition());
   }
 
   /*
@@ -204,12 +231,13 @@ public class Robot extends TimedRobot {
 
     //sets all the positions of the encoders to 0
     armExtensionEncoder.setPosition(0);
-    leftMotor1Encoder.setPosition(0);
-    rightMotor1Encoder.setPosition(0);
+    frontLeftMotorEncoder.setPosition(0);
+    frontRightMotorEncoder.setPosition(0);
 
     //calibrates the gyro
     yaw.reset();
     pitch.reset();
+    
   }
 
 
@@ -248,6 +276,18 @@ public class Robot extends TimedRobot {
     }
   }
 
+  /* This method will balance the charging station once called
+   * 
+   */
+  public void balance() {
+    while (pitch.getAngle() > 10) {
+      driveTrain.arcadeDrive(0.25, 0);
+    }
+    while (pitch.getAngle() < -10){
+      driveTrain.arcadeDrive(-0.25, 0);
+    }
+  }
+
   /* This is the method that controls the clamp 
    * @param isClosed is the boolean that controls the intake.
    */
@@ -263,7 +303,7 @@ public class Robot extends TimedRobot {
 
   /*This is the method that controls the armExtensionMotor during autonmous and resticks it in teleop
    * @param position is the encoder at the position wanted
-   * @param override is a boolean that causes a override incase of failure
+   * @param override is a boolean that causes a override incase of failier
    */
   public void armExtension(double position, boolean override) {
     
@@ -289,13 +329,13 @@ public class Robot extends TimedRobot {
     //Used to get the time at the time the method is called
     double startofMethod = Timer.getFPGATimestamp();
 
-    if (isHigh) {
+    if(isHigh){
       //need to check the time. While the arm is shorter than the high node distance and time is more than 3 seconds.
-      while ((armExtensionEncoder.getPosition() < highNodeDistance) && (Timer.getFPGATimestamp() - startofMethod < 3)) { 
+      while((armExtensionEncoder.getPosition() < highNodeDistance) && (Timer.getFPGATimestamp() - startofMethod < 3)) { 
         armExtensionMotor.set(0.75); //Extends arm at speed of 0.75.
       }
-    } else {
-      while ((armExtensionEncoder.getPosition() < middleNodeDistance) && (Timer.getFPGATimestamp() - startofMethod < 3)) { 
+    }else{
+      while((armExtensionEncoder.getPosition() < middleNodeDistance) && (Timer.getFPGATimestamp() - startofMethod < 3)) { 
         armExtensionMotor.set(0.75); //Extends arm at speed of 0.75.
       }
     }
@@ -308,15 +348,14 @@ public class Robot extends TimedRobot {
     }
   }
 
-  /* Method for returning the encoder that has least number of rotations.
+  /* Method for returning the encoder that has leased number of rotions.
    * @return returns a relative encoder
    */
   public RelativeEncoder distanceDriven(){
-    if (leftMotor1Encoder.getPosition() > rightMotor1Encoder.getPosition()){
-      return rightMotor1Encoder;
+    if (frontLeftMotorEncoder.getPosition() > frontRightMotorEncoder.getPosition()){
+      return frontRightMotorEncoder;
     }
-      return leftMotor1Encoder;
-
+      return frontLeftMotorEncoder;
   }
 
   /* Method for driving a certain distance. Uses the .getPosition() from an encoder to return the number of rotations.
@@ -327,9 +366,9 @@ public class Robot extends TimedRobot {
     //Used to get the time at the time the method is called
     double startofMethod = Timer.getFPGATimestamp();
 
-    //drives the distance passed in by the paramiter out of the community.
-    while ((distanceDriven().getPosition() < -distance) && (Timer.getFPGATimestamp() - startofMethod  < 5)) { 
-      driveTrain.arcadeDrive(forwardController.calculate(distanceDriven().getPosition(), distance), 0);
+    //drives the distance passed in by the parameter out of the community.
+    while ((distanceDriven().getPosition() * distancePerRotation < distance) && (Timer.getFPGATimestamp() - startofMethod  < 5)) { 
+      driveTrain.arcadeDrive(forwardController.calculate((distanceDriven().getPosition() * distancePerRotation), distance), 0);
     }
   }
 
@@ -350,16 +389,13 @@ public class Robot extends TimedRobot {
    * on the charging station. 
    */
   public void scoreDriveBackBalance() {
-    scoreDriveBack();//runs scoreDriveBack
+    scoreDriveBack();//runs scoreDrvieBack
 
     //drives back to the charging station.
-    driveDistance(distanceToBalance);
-    
-    while (true)
-      //Gets the gyro numbers
-      pitch.getAngle();
+    driveDistance(distanceToBalance - 24);
 
-      //Using the gyro to balance
+    //Using the gyro to balance
+    balance();
   }
 
   /* Method that is an autonomous routine. This would be selected in autonomous periotic.
@@ -413,10 +449,10 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopInit() {
     //Sets motors IdleMode to coast. Need to add 3 second wait. Figure it out, take your time. Maybe use boolean for brakes.
-    leftMotor1.setIdleMode(IdleMode.kCoast);
-    leftMotor2.setIdleMode(IdleMode.kCoast);
-    rightMotor1.setIdleMode(IdleMode.kCoast);
-    rightMotor2.setIdleMode(IdleMode.kCoast);
+    frontLeftMotor.setIdleMode(IdleMode.kCoast);
+    backLeftMotor.setIdleMode(IdleMode.kCoast);
+    frontRightMotor.setIdleMode(IdleMode.kCoast);
+    backRightMotor.setIdleMode(IdleMode.kCoast);
   }
 
   /* This function is called periodically during operator control. */
@@ -425,7 +461,7 @@ public class Robot extends TimedRobot {
     
     //Sets up the drive train. Left stick controls the forward and back. Right controls turning.
     //Want cubic function. currently linear. Look up deadbands
-    driveTrain.arcadeDrive(blueController.getRawAxis(1), blueController.getRawAxis(4));
+    driveTrain.arcadeDrive(Math.pow(blueController.getRawAxis(1), 3), Math.pow(blueController.getRawAxis(4), 3));
 
     //need control for exstention motor
 
@@ -455,8 +491,8 @@ public class Robot extends TimedRobot {
     } else if (redController.getRawButton(9)) { // Button R3.
 
     }
-
-    armExtension(redController.getRawAxis(1), isOverride);//controls the extension of the arm
+    
+    armExtensionMotor.set(Math.pow(redController.getRawAxis(1), 3));//controls the extension of the arm
 
     bite(intakeStatus);//controls the intake. false is open, true is closed
 
@@ -489,28 +525,3 @@ public class Robot extends TimedRobot {
   @Override
   public void simulationPeriodic() {}
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
