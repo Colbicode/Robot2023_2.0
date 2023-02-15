@@ -25,7 +25,6 @@ import edu.wpi.first.wpilibj.GenericHID.RumbleType;
 import edu.wpi.first.wpilibj.SPI.Port;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.ADIS16470_IMU;
-import edu.wpi.first.wpilibj.ADXRS450_Gyro;
 import edu.wpi.first.wpilibj.motorcontrol.MotorControllerGroup;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -173,7 +172,6 @@ public class Robot extends TimedRobot {
     leftMotor2Encoder.setPosition(0);
     rightMotor1Encoder.setPosition(0);
     rightMotor2Encoder.setPosition(0);
-  
   }
 
   /*
@@ -212,7 +210,6 @@ public class Robot extends TimedRobot {
     //calibrates the gyro
     yaw.reset();
     pitch.reset();
-    
   }
 
 
@@ -266,7 +263,7 @@ public class Robot extends TimedRobot {
 
   /*This is the method that controls the armExtensionMotor during autonmous and resticks it in teleop
    * @param position is the encoder at the position wanted
-   * @param override is a boolean that causes a override incase of failier
+   * @param override is a boolean that causes a override incase of failure
    */
   public void armExtension(double position, boolean override) {
     
@@ -292,13 +289,13 @@ public class Robot extends TimedRobot {
     //Used to get the time at the time the method is called
     double startofMethod = Timer.getFPGATimestamp();
 
-    if(isHigh){
+    if (isHigh) {
       //need to check the time. While the arm is shorter than the high node distance and time is more than 3 seconds.
-      while((armExtensionEncoder.getPosition() < highNodeDistance) && (Timer.getFPGATimestamp() - startofMethod < 3)) { 
+      while ((armExtensionEncoder.getPosition() < highNodeDistance) && (Timer.getFPGATimestamp() - startofMethod < 3)) { 
         armExtensionMotor.set(0.75); //Extends arm at speed of 0.75.
       }
-    }else{
-      while((armExtensionEncoder.getPosition() < middleNodeDistance) && (Timer.getFPGATimestamp() - startofMethod < 3)) { 
+    } else {
+      while ((armExtensionEncoder.getPosition() < middleNodeDistance) && (Timer.getFPGATimestamp() - startofMethod < 3)) { 
         armExtensionMotor.set(0.75); //Extends arm at speed of 0.75.
       }
     }
@@ -311,7 +308,7 @@ public class Robot extends TimedRobot {
     }
   }
 
-  /* Method for returning the encoder that has leased number of rotions.
+  /* Method for returning the encoder that has least number of rotations.
    * @return returns a relative encoder
    */
   public RelativeEncoder distanceDriven(){
@@ -331,12 +328,12 @@ public class Robot extends TimedRobot {
     double startofMethod = Timer.getFPGATimestamp();
 
     //drives the distance passed in by the paramiter out of the community.
-    while((distanceDriven().getPosition() < -distance) && (Timer.getFPGATimestamp() - startofMethod  < 5)) { 
+    while ((distanceDriven().getPosition() < -distance) && (Timer.getFPGATimestamp() - startofMethod  < 5)) { 
       driveTrain.arcadeDrive(forwardController.calculate(distanceDriven().getPosition(), distance), 0);
     }
   }
 
-  /* Method that is an autonomous rotine. This would be selected in autonomous periotic
+  /* Method that is an autonomous rotine. This would be selected in autonomous periodic
    * Would score high and then drive backwards out of the community.
    */
   public void scoreDriveBack() {
@@ -353,15 +350,16 @@ public class Robot extends TimedRobot {
    * on the charging station. 
    */
   public void scoreDriveBackBalance() {
-    scoreDriveBack();//runs scoreDrvieBack
+    scoreDriveBack();//runs scoreDriveBack
 
     //drives back to the charging station.
     driveDistance(distanceToBalance);
     
-    //Gets the gyro numbers
-    
+    while (true)
+      //Gets the gyro numbers
+      pitch.getAngle();
 
-    //Using the gyro to ballance
+      //Using the gyro to balance
   }
 
   /* Method that is an autonomous routine. This would be selected in autonomous periotic.
