@@ -165,7 +165,7 @@ public class Robot extends TimedRobot {
     tooth2.setInverted(true);
 
     //Makes the intake closed at the start of the match
-    intakeStatus = true;
+    intakeStatus = false;
 
     //Sets up the PID controllers.
     angleController.setTolerance(5);
