@@ -22,7 +22,6 @@ import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.ADIS16470_IMU.IMUAxis;
 import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import edu.wpi.first.wpilibj.GenericHID.RumbleType;
-import edu.wpi.first.wpilibj.SPI.Port;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.ADIS16470_IMU;
 import edu.wpi.first.wpilibj.motorcontrol.MotorControllerGroup;
@@ -50,7 +49,6 @@ public class Robot extends TimedRobot {
   // The controllers.
   private final GenericHID redController = new GenericHID(1); //Operator Controller
   private final GenericHID blueController = new GenericHID(0); //Drive Controller
-
   
   // Drive motors
   private final CANSparkMax frontLeftMotor = new CANSparkMax(1, MotorType.kBrushless);
@@ -77,9 +75,13 @@ public class Robot extends TimedRobot {
   private final DoubleSolenoid clamp = new DoubleSolenoid(PneumaticsModuleType.REVPH, 5, 6); //Clamping solenoid
 
   //Motor for extension of the arm.
-  private final CANSparkMax armExtensionMotor = new CANSparkMax(5, MotorType.kBrushed);
+  private CANSparkMax armExtensionMotor;
   //Extension Motor Encoder
-  private final SparkMaxAlternateEncoder armExtensionEncoder = new SparkMaxAlternateEncoder(armExtensionMotor, null, );
+  private RelativeEncoder armExtensionEncoder;
+  private final SparkMaxAlternateEncoder.Type kAltEncType = SparkMaxAlternateEncoder.Type.kQuadrature;
+  //Number for quadrature encoder uses
+  private final int kCPR = 8192;
+
 
   //Intake motors
   private final CANSparkMax tooth1 = new CANSparkMax(6, MotorType.kBrushed);
@@ -154,20 +156,16 @@ public class Robot extends TimedRobot {
     SmartDashboard.putData("Auto choices", m_chooser);
 
     //This is where we change the setInverted properties on the motors.
-    frontLeftMotor.setInverted(true); //True or false depending on when we test the motors.
+    frontLeftMotor.setInverted(true); //Values TBD...
     backLeftMotor.setInverted(true);
     frontRightMotor.setInverted(true);
     backRightMotor.setInverted(true);
 
-    armExtensionMotor.setInverted(true);
     tooth1.setInverted(false);
     tooth2.setInverted(true);
 
     //Makes the intake closed at the start of the match
     intakeStatus = true;
-
-    //Make sure that it is in starting configuration.
-    armLevel(0);
 
     //Sets up the PID controllers.
     angleController.setTolerance(5);
@@ -175,14 +173,23 @@ public class Robot extends TimedRobot {
     armExtensionController.setTolerance(5); 
     forwardController.setTolerance(5); 
 
-    //set the encoders to 0
-    //This sets up the encoder of the arm extension
+    //Initialize the arm extension motor
+    armExtensionMotor = new CANSparkMax(5, MotorType.kBrushed);
+    //Inverts the arm extension motor.
+    armExtensionMotor.setInverted(true);
+
+    //Initalize the arm extension encoder
+    armExtensionEncoder = armExtensionMotor.getAlternateEncoder(kAltEncType, kCPR);
+    
+    //Sets the encoders to 0
     armExtensionEncoder.setPosition(0);
     frontLeftMotorEncoder.setPosition(0);
     backLeftMotorEncoder.setPosition(0);
     frontRightMotorEncoder.setPosition(0);
     backRightMotorEncoder.setPosition(0);
-  
+
+    //Make sure that it is in starting configuration.
+    armLevel(0);
   }
 
   /*
