@@ -156,8 +156,8 @@ public class Robot extends TimedRobot {
     SmartDashboard.putData("Auto choices", m_chooser);
 
     //This is where we change the setInverted properties on the motors.
-    frontLeftMotor.setInverted(true); //Values TBD...
-    backLeftMotor.setInverted(true);
+    frontLeftMotor.setInverted(false); //Values TBD...
+    backLeftMotor.setInverted(false);
     frontRightMotor.setInverted(true);
     backRightMotor.setInverted(true);
 
@@ -189,7 +189,7 @@ public class Robot extends TimedRobot {
     backRightMotorEncoder.setPosition(0);
 
     //Make sure that it is in starting configuration.
-    armLevel(0);
+    //armLevel(0); (colbert)
   }
 
   /*
@@ -335,6 +335,24 @@ public class Robot extends TimedRobot {
     }
   }
 
+  /*This method calculates controller deadzone. 
+   * @param axisLevel takes the axis' setpoint.
+   * @param controller takes the controller type as a string. Red or Blue.
+   * @return float for the deadzone control.
+  */
+  public double deadzone(double d, String controller) {
+    if (controller.equalsIgnoreCase("red")) {
+      if ((d > 0.15) || (d < -0.15)) {
+        return d;
+      }
+    }
+    if (controller.equalsIgnoreCase("blue")) {
+      if ((d > 0.15) || (d < -0.15)) {
+        return d;
+      }
+    }
+    return 0;
+  }
 
   /** AUTONOMOUS ONLY METHODS **/
   
@@ -483,7 +501,7 @@ public class Robot extends TimedRobot {
     //Want cubic function. currently linear. Look up deadbands
     driveTrain.arcadeDrive(Math.pow(blueController.getRawAxis(1), 3), Math.pow(blueController.getRawAxis(4), 3));
 
-    //need control for exstention motor
+    //need control for extention motor
 
     //This bunch of if then statements is the button map. Blue controller is operator
     if (redController.getRawButton(0)) { // Button ✖️. Scoring position
@@ -512,7 +530,7 @@ public class Robot extends TimedRobot {
 
     //}
     
-    armExtensionMotor.set(Math.pow(redController.getRawAxis(1), 3));//controls the extension of the arm
+    //armExtensionMotor.set(Math.pow(deadzone(redController.getRawAxis(1), "red"), 3));//controls the extension of the arm (colbert)
 
     //sets the rumble when the arm is within 0.25 rotion of middle and highNodeDistance
     if(armExtensionEncoder.getPosition() >= highNodeDistance - 0.25 && armExtensionEncoder.getPosition() <= highNodeDistance + 0.25){
