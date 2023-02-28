@@ -70,9 +70,9 @@ public class Robot extends TimedRobot {
 
   
   //DoubleSolenoids
-  private final DoubleSolenoid firstStage = new DoubleSolenoid(PneumaticsModuleType.REVPH, 1, 2); //Small solenoid
-  private final DoubleSolenoid secondStage = new DoubleSolenoid(PneumaticsModuleType.REVPH, 3, 4); //Big solenoid
-  private final DoubleSolenoid clamp = new DoubleSolenoid(PneumaticsModuleType.REVPH, 5, 6); //Clamping solenoid
+  private final DoubleSolenoid firstStage = new DoubleSolenoid(PneumaticsModuleType.REVPH, 0, 1); //Small solenoid
+  private final DoubleSolenoid secondStage = new DoubleSolenoid(PneumaticsModuleType.REVPH, 8, 9); //Big solenoid
+  private final DoubleSolenoid clamp = new DoubleSolenoid(PneumaticsModuleType.REVPH, 14, 15); //Clamping solenoid
 
   //Motor for extension of the arm.
   private CANSparkMax armExtensionMotor;
