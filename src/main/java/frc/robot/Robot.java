@@ -79,9 +79,9 @@ public class Robot extends TimedRobot {
   //Extension Motor Encoder
   private final Encoder armExtensionEncoder = new Encoder(0, 1);
 
-  //Intake motors
+
+  //Intake motors. JK just one
   private final CANSparkMax teeth = new CANSparkMax(6, MotorType.kBrushed);
-  
 
   
   //This is the gyro. The yaw aixs is set up robotInit(). the x axis is the yaw axis, y is the roll, and z is the pitch.
@@ -119,6 +119,7 @@ public class Robot extends TimedRobot {
   //Max arm distance for manual arm control
   public final double maxArmExtensionDistance = 48; //NOTE: TBD
 
+  
   /* Other necessary variables */
   //provides the status of the intake. Starts in closed position to hold game piece
   public boolean isClosed;
@@ -131,7 +132,8 @@ public class Robot extends TimedRobot {
   //Distance of the high node. In inches
   public final double highNodeDistance = 48;
   
-  public final double lengthOfRobot = 32; //Length of robot frame for reference.
+  //Length of robot frame for reference.
+  public final double lengthOfRobot = 32; 
 
   //set the override 
   public boolean isOverride = false;
@@ -142,9 +144,7 @@ public class Robot extends TimedRobot {
   //intake speed
   public final double intakeSpeed = 0.75;
 
-  //
-
-
+  
   /*
    * This function is run when the robot is first started up and should be used
    * for any initialization code.
@@ -178,7 +178,6 @@ public class Robot extends TimedRobot {
 
     //Initialize the arm extension motor
     armExtensionMotor = new CANSparkMax(5, MotorType.kBrushed);
-    //Inverts the arm extension motor.
     armExtensionMotor.setInverted(true);
 
     //Initalize the arm extension encoder
@@ -193,7 +192,7 @@ public class Robot extends TimedRobot {
     backRightMotorEncoder.setPosition(0);
 
     //Make sure that it is in starting configuration.
-    //armLevel(0); (colbert)
+    armLevel(0); 
   }
 
   /*
@@ -219,8 +218,8 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("Back Left Motor Encoder Distance (rotations*2.23)", backLeftMotorEncoder.getPosition() * distancePerRotation);
 
     //Reports Gyros' axis angles  
-    //SmartDashboard.putNumber("The pitch axis of the Gyro (z axis): ", getAngleOfAxis(pitch));
-    SmartDashboard.putNumber("The yaw axis of the gyro (x axis): ", getAngleOfAxis(yaw));
+    SmartDashboard.putNumber("The pitch axis of the Gyro (z axis): ", getAngleOfAxis(pitch));
+    //SmartDashboard.putNumber("The yaw axis of the gyro (x axis): ", getAngleOfAxis(yaw));
     /********* We're on a Roll **********/
 
     //Reports Arm Motor Encoder Position //Note: Need to calculate distance at some point.
@@ -250,29 +249,30 @@ public class Robot extends TimedRobot {
 
 
   /*** AUTONOMOUS AND TELEOP METHODS ***/ 
-  
   /** CONTROL METHODS USED IN AUTONOMOUS AND TELEOP **/
 
   /* Method for setting the level of the arm
    * @param int level; 0: starting configuration, 1: ground level, 2: scoring level.
    */
   public void armLevel(int level) {
-    switch(level){//Up and down motion of the arm. Need to figure out how to start with this.
+    switch(level) {//Up and down motion of the arm. Need to figure out how to start with this.
       case 0: //Starting configuration  
-       // armExtension(0, false);//retacks the arm
+       // armExtension(0, false);//retracts the arm
         firstStage.set(Value.kForward);
         secondStage.set(Value.kForward);
-
         break;
+
       case 1: //Ground Level Configuration
         //Need to do math here. Put arm to Ground level
         firstStage.set(Value.kReverse);
         secondStage.set(Value.kReverse);
-        
-      case 2: //Scoring Level Configuration
-        firstStage.set(Value.kReverse);
-        secondStage.set(Value.kForward);
         break;
+
+      case 2: //Scoring Level Configuration
+        firstStage.set(Value.kForward);
+        secondStage.set(Value.kReverse);
+        break;
+        
       default:
         break;
     }
@@ -281,20 +281,19 @@ public class Robot extends TimedRobot {
   /* This method will return the angle of the wanted axis
    * @param "axis" is the axis you want
    */
-  public double getAngleOfAxis(IMUAxis axis)
-  {
+  public double getAngleOfAxis(IMUAxis axis) {
     gyro.setYawAxis(axis);
     return gyro.getAngle();
   } 
 
-  /* This method will balance the charging station once called
+  /* This method will balance the charging station once called.
    * 
    */
   public void balance() {
     while (getAngleOfAxis(pitch) > 10) {
       driveTrain.arcadeDrive(0.25, 0);
     }
-    while (getAngleOfAxis(pitch) < -10){
+    while (getAngleOfAxis(pitch) < -10) {
       driveTrain.arcadeDrive(-0.25, 0);
     }
   }
@@ -303,34 +302,20 @@ public class Robot extends TimedRobot {
    * @param isClosed is the boolean that controls the intake.
    */
   public void bite(boolean isIntakeClosed, boolean isStill, boolean isSpinOut) {
-    if(isIntakeClosed && isNotSpinning){//intake closed with no wheels spinning      
+    if (isIntakeClosed) {//intake closed
       clamp.set(Value.kForward);
+    } else if(!isIntakeClosed) {//intake open
+      clamp.set(Value.kReverse);
+    } 
+    
+    if (isStill) { //Motor are still. Meaning they're not moving
       teeth.set(0);
-    } else if(!isIntakeClosed && isNotSpinning){//intake open with no wheels spinning 
-      clamp.set(Value.kReverse);
-      teeth.set(0);
-    } else if(isIntakeClosed && !isSpinOut){//intake closed with wheels spinning in
-      clamp.set(Value.kForward);
+    } else if (!isSpinOut) { //wheels spinning in
       teeth.set(-intakeSpeed);
-    } else if(isIntakeClosed && isSpinOut){//intake close with wheels going out
-        clamp.set(Value.kForward);
-        teeth.set(intakeSpeed);
-    }  else if(!isIntakeClosed && !isSpinOut){//intake open with wheels spinning in
-      clamp.set(Value.kReverse);
-      teeth.set(-intakeSpeed);
-    } else if(!isIntakeClosed && isSpinOut){// intake open with wheels spinning out
-      clamp.set(Value.kReverse);
+    } else { //wheels going out
       teeth.set(intakeSpeed);
     }
   }
-
-  /*This is the method that controls the armExtensionMotor during autonmous and resticks it in teleop
-   * @param position is the encoder at the position wanted
-   * @param override is a boolean that causes a override incase of failier
-   */
-  
-    //armExtensionMotor.set(redController.getRawAxis(1));
-  
 
   /*This method calculates controller deadzone. 
    * @param axisLevel takes the axis' setpoint.
@@ -364,13 +349,13 @@ public class Robot extends TimedRobot {
     //Used to get the time at the time the method is called
     double startofMethod = Timer.getFPGATimestamp();
 
-    if(isHigh){
+    if (isHigh) {
       //need to check the time. While the arm is shorter than the high node distance and time is more than 3 seconds.
       while((armExtensionEncoder.getDistance() < highNodeDistance) || (Timer.getFPGATimestamp() - startofMethod < 3)) { 
         armExtensionMotor.set(0.75); //Extends arm at speed of 0.75.
       }
-    }else{
-      while((armExtensionEncoder.getDistance() < middleNodeDistance) || (Timer.getFPGATimestamp() - startofMethod < 3)) { 
+    } else {
+      while ((armExtensionEncoder.getDistance() < middleNodeDistance) || (Timer.getFPGATimestamp() - startofMethod < 3)) { 
         armExtensionMotor.set(0.75); //Extends arm at speed of 0.75.
       }
     }
@@ -378,7 +363,7 @@ public class Robot extends TimedRobot {
     bite(false, false, true);// opens the intake
 
     //retracts the arm until encoder postion is less than or time is 6sec.
-    while((armExtensionEncoder.getDistance() < 1) || (Timer.getFPGATimestamp() - startofMethod < 6 )) { 
+    while ((armExtensionEncoder.getDistance() < 1) || (Timer.getFPGATimestamp() - startofMethod < 6 )) { 
       armExtensionMotor.set(-0.75);
     }
   }
@@ -386,7 +371,7 @@ public class Robot extends TimedRobot {
   /* Method for returning the encoder that has leased number of rotions.
    * @return returns a relative encoder
    */
-  public RelativeEncoder distanceDriven(){
+  public RelativeEncoder distanceDriven() {
     if (frontLeftMotorEncoder.getPosition() > frontRightMotorEncoder.getPosition()){
       return frontRightMotorEncoder;
     }
@@ -463,7 +448,7 @@ public class Robot extends TimedRobot {
   }
 
 
-  /* This function is called periodically during autonomous. */
+  /* This function is called periodically during autonomous.*/
   @Override
   public void autonomousPeriodic() {
     switch (m_autoSelected) {
@@ -508,34 +493,21 @@ public class Robot extends TimedRobot {
       armLevel(1);
     } else if (redController.getRawButton(3)) { // Button 🟪. Starting configeration
       armLevel(0);
-    }/*  else if (redController.getRawButton(4)) { // Button 🔺. No purpose at the moment.
-      
-    } */else if (redController.getRawButton(5)) { // Button L1. Intake is open
+    } else if (redController.getRawButton(5)) { // Button L1. Intake is open
       isClosed = true;
     } else if (redController.getRawButton(6)) { // Button R1. Intake is closed
       isClosed = false;
-    } //else if (redController.getRawAxis(7) > 0.1) { // Button SHARE.
-      
-   // } else if (redController.getRawButton(8)) { // Button OPTIONS.
+    } 
 
-    //} else if (redController.getRawButton(9)) { // Button L3.
-      
-    //} else if (redController.getRawButton(10)) { // Button R3.
-
-    //}
-
-    if(redController.getRawAxis(2) <= 0.1){//This sets the varibles for the wheels to spin out. Is left trigger
+    if (redController.getRawAxis(2) <= 0.1) {//This sets the varibles for the wheels to spin out. Is left trigger
       isNotSpinning = false;
       isSpinningOut = true;
-    } else if (redController.getRawAxis(3) <= 0.1){//This set the varible for the wheels to spin in. Is right trigger
+    } else if (redController.getRawAxis(3) <= 0.1) {//This set the varible for the wheels to spin in. Is right trigger
       isNotSpinning = false;
       isSpinningOut = false;
-    } else{
+    } else {
       isNotSpinning = true;
     }
-
-    
-    //armExtensionMotor.set(Math.pow(deadzone(redController.getRawAxis(1), "red"), 3));//controls the extension of the arm (colbert)
 
     //sets the rumble when the arm is within 0.25 rotion of middle and highNodeDistance
     if(armExtensionEncoder.getDistance() >= highNodeDistance - 0.25 && armExtensionEncoder.getDistance() <= highNodeDistance + 0.25){
