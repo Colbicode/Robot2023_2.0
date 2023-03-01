@@ -120,10 +120,10 @@ public class Robot extends TimedRobot {
   public final double maxArmExtensionDistance = 48; //NOTE: TBD
 
   /* Other necessary variables */
-  //provides the status of the intake. False is open, and true is closed. Starts in closed position to hold game piece
-  public boolean isClosed = false;
-  public boolean isNotSpinning = false;
-  public boolean isSpinningOut = false;
+  //provides the status of the intake. Starts in closed position to hold game piece
+  public boolean isClosed;
+  public boolean isNotSpinning;
+  public boolean isSpinningOut;
 
   //Distance of middle scoring level. needs to be figured out.
   public final double middleNodeDistance = 30;
@@ -166,7 +166,9 @@ public class Robot extends TimedRobot {
     teeth.setInverted(false);
 
     //Makes the intake closed at the start of the match
-    //intakeStatus = false;
+    isClosed = false;
+    isNotSpinning = true;
+    isSpinningOut = false;
 
     //Sets up the PID controllers.
     angleController.setTolerance(5);
@@ -216,9 +218,7 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("Back Left Motor Encoder Position", backLeftMotorEncoder.getPosition());
     SmartDashboard.putNumber("Back Left Motor Encoder Distance (rotations*2.23)", backLeftMotorEncoder.getPosition() * distancePerRotation);
 
-    //Reports Gyros' axis angles
-    
-    
+    //Reports Gyros' axis angles  
     //SmartDashboard.putNumber("The pitch axis of the Gyro (z axis): ", getAngleOfAxis(pitch));
     SmartDashboard.putNumber("The yaw axis of the gyro (x axis): ", getAngleOfAxis(yaw));
     /********* We're on a Roll **********/
@@ -246,10 +246,6 @@ public class Robot extends TimedRobot {
     //sets all the positions of the encoders to 0
     frontLeftMotorEncoder.setPosition(0);
     frontRightMotorEncoder.setPosition(0);
-
-    //calibrates the gyro
-    
-    
   }
 
 
@@ -274,8 +270,8 @@ public class Robot extends TimedRobot {
         secondStage.set(Value.kReverse);
         
       case 2: //Scoring Level Configuration
-        firstStage.set(Value.kForward);
-        secondStage.set(Value.kReverse);
+        firstStage.set(Value.kReverse);
+        secondStage.set(Value.kForward);
         break;
       default:
         break;
@@ -306,23 +302,23 @@ public class Robot extends TimedRobot {
   /* This is the method that controls the clamp 
    * @param isClosed is the boolean that controls the intake.
    */
-  public void bite(boolean isClosed, boolean isNotSpinning, boolean isSpinningOut) {
-    if(isClosed && isNotSpinning){//intake closed with no wheels spinning      
+  public void bite(boolean isIntakeClosed, boolean isStill, boolean isSpinOut) {
+    if(isIntakeClosed && isNotSpinning){//intake closed with no wheels spinning      
       clamp.set(Value.kForward);
       teeth.set(0);
-    } else if(isClosed && !isSpinningOut){//intake closed with wheels spinning in
+    } else if(!isIntakeClosed && isNotSpinning){//intake open with no wheels spinning 
+      clamp.set(Value.kReverse);
+      teeth.set(0);
+    } else if(isIntakeClosed && !isSpinOut){//intake closed with wheels spinning in
       clamp.set(Value.kForward);
       teeth.set(-intakeSpeed);
-    } else if(isClosed && isSpinningOut){//intake close with wheels going out
+    } else if(isIntakeClosed && isSpinOut){//intake close with wheels going out
         clamp.set(Value.kForward);
         teeth.set(intakeSpeed);
-    } else if(!isClosed && isNotSpinning){//intake open with no wheels spinning 
-      clamp.set(Value.kReverse);
-      teeth.set(0);
-    } else if(!isClosed && !isSpinningOut){//intake open with wheels spinning in
+    }  else if(!isIntakeClosed && !isSpinOut){//intake open with wheels spinning in
       clamp.set(Value.kReverse);
       teeth.set(-intakeSpeed);
-    } else if(!isClosed && isSpinningOut){// intake open with wheels spinning out
+    } else if(!isIntakeClosed && isSpinOut){// intake open with wheels spinning out
       clamp.set(Value.kReverse);
       teeth.set(intakeSpeed);
     }
@@ -518,7 +514,7 @@ public class Robot extends TimedRobot {
       isClosed = true;
     } else if (redController.getRawButton(6)) { // Button R1. Intake is closed
       isClosed = false;
-    } else if (redController.getRawAxis(7) > 0.1) { // Button SHARE.
+    } //else if (redController.getRawAxis(7) > 0.1) { // Button SHARE.
       
    // } else if (redController.getRawButton(8)) { // Button OPTIONS.
 
@@ -526,7 +522,7 @@ public class Robot extends TimedRobot {
       
     //} else if (redController.getRawButton(10)) { // Button R3.
 
-    }
+    //}
 
     if(redController.getRawAxis(2) <= 0.1){//This sets the varibles for the wheels to spin out. Is left trigger
       isNotSpinning = false;
@@ -534,6 +530,8 @@ public class Robot extends TimedRobot {
     } else if (redController.getRawAxis(3) <= 0.1){//This set the varible for the wheels to spin in. Is right trigger
       isNotSpinning = false;
       isSpinningOut = false;
+    } else{
+      isNotSpinning = true;
     }
 
     
