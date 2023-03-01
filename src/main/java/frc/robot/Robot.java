@@ -75,13 +75,13 @@ public class Robot extends TimedRobot {
   private final DoubleSolenoid clamp = new DoubleSolenoid(PneumaticsModuleType.REVPH, 14, 15); //Clamping solenoid
 
   //Motor for extension of the arm.
-  private CANSparkMax armExtensionMotor;
+  private CANSparkMax armExtensionMotor = new CANSparkMax(5, MotorType.kBrushed);
   //Extension Motor Encoder
   private final Encoder armExtensionEncoder = new Encoder(0, 1);
 
 
   //Intake motors. JK just one
-  private final CANSparkMax teeth = new CANSparkMax(6, MotorType.kBrushed);
+  private final CANSparkMax teeth = new CANSparkMax(7, MotorType.kBrushed);
 
   
   //This is the gyro. The yaw aixs is set up robotInit(). the x axis is the yaw axis, y is the roll, and z is the pitch.
@@ -272,7 +272,7 @@ public class Robot extends TimedRobot {
         firstStage.set(Value.kForward);
         secondStage.set(Value.kReverse);
         break;
-        
+
       default:
         break;
     }
@@ -499,10 +499,10 @@ public class Robot extends TimedRobot {
       isClosed = false;
     } 
 
-    if (redController.getRawAxis(2) <= 0.1) {//This sets the varibles for the wheels to spin out. Is left trigger
+    if (redController.getRawAxis(2) > 0.1) {//This sets the varibles for the wheels to spin out. Is left trigger
       isNotSpinning = false;
       isSpinningOut = true;
-    } else if (redController.getRawAxis(3) <= 0.1) {//This set the varible for the wheels to spin in. Is right trigger
+    } else if (redController.getRawAxis(3) > 0.1) {//This set the varible for the wheels to spin in. Is right trigger
       isNotSpinning = false;
       isSpinningOut = false;
     } else {
