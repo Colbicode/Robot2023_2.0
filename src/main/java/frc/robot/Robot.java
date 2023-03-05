@@ -40,7 +40,9 @@ public class Robot extends TimedRobot {
   // Sets up autonomous routines.
   private static final String kDefaultAuto = "Default - score_drive_balance";
   private static final String kScoreDriveBackAuto = "score_driveBack";
+  private static final String KDriveBack = "Driveback";
   private static final String kScoreDriveBackScoreAuto = "score_driveBack_score";
+  private static final String kNothing = "Nothing";
   private String m_autoSelected;
   private final SendableChooser<String> m_chooser = new SendableChooser<>();
 
@@ -75,7 +77,7 @@ public class Robot extends TimedRobot {
   private final DoubleSolenoid clamp = new DoubleSolenoid(PneumaticsModuleType.REVPH, 14, 15); //Clamping solenoid
 
   //Motor for extension of the arm.
-  private CANSparkMax armExtensionMotor = new CANSparkMax(5, MotorType.kBrushed);
+  private CANSparkMax armExtensionMotor = new CANSparkMax(5,MotorType.kBrushed);
   //Extension Motor Encoder
   private final Encoder armExtensionEncoder = new Encoder(0, 1);
 
@@ -102,7 +104,7 @@ public class Robot extends TimedRobot {
 
   /* Variables for autonomous */
   //set the distance to travel from out of community to balance
-  public final double distanceToBalance = 102; //subject to change.
+  public final double distanceToBalance = 46; //origanal 102, test 1: 46
 
   //Angle needed to turn and grab the cone after driving back. 
   public final double angleToGrabCone = 90; //subject to change.
@@ -114,10 +116,10 @@ public class Robot extends TimedRobot {
   public final double coneDistance = 10; //subject to change.
 
   //sets the distance to travel to get out of community in autonomous
-  public final double distanceOutOfCommunity = 224; //distance to the cones in inches. 18' 8"
+  public final double distanceOutOfCommunity = 85; //Origanal: 225, test 2: 175, test 3: 90, test 4: 75 
 
   //Max arm distance for manual arm control
-  public final double maxArmExtensionDistance = 48; //NOTE: TBD
+  public final double maxArmExtensionDistance = 150; //NOTE: TBD
 
   
   /* Other necessary variables */
@@ -130,7 +132,7 @@ public class Robot extends TimedRobot {
   public final double middleNodeDistance = 30;
 
   //Distance of the high node. In inches
-  public final double highNodeDistance = 48;
+  public final double highNodeDistance = 150;
   
   //Length of robot frame for reference.
   public final double lengthOfRobot = 32; 
@@ -154,14 +156,16 @@ public class Robot extends TimedRobot {
     //Sets up the options you see for auto on SmartDashboard.
     m_chooser.setDefaultOption("Default - score_drive_balance", kDefaultAuto);
     m_chooser.addOption("score_driveBack", kScoreDriveBackAuto);
+    m_chooser.addOption("Drive_back", KDriveBack);
     m_chooser.addOption("score_driveBack_score", kScoreDriveBackScoreAuto);
+    m_chooser.addOption("Nothing", kNothing);
     SmartDashboard.putData("Auto choices", m_chooser);
 
     //This is where we change the setInverted properties on the motors.
-    frontLeftMotor.setInverted(true); //Values TBD...
-    backLeftMotor.setInverted(true);
-    frontRightMotor.setInverted(false);
-    backRightMotor.setInverted(false);
+    frontLeftMotor.setInverted(false); //Values TBD...
+    backLeftMotor.setInverted(false);
+    frontRightMotor.setInverted(true);
+    backRightMotor.setInverted(true);
 
     teeth.setInverted(false);
 
@@ -177,8 +181,7 @@ public class Robot extends TimedRobot {
     forwardController.setTolerance(5); 
 
     //Initialize the arm extension motor
-    armExtensionMotor = new CANSparkMax(5, MotorType.kBrushed);
-    armExtensionMotor.setInverted(true);
+    armExtensionMotor.setInverted(false);
 
     //Initalize the arm extension encoder
     armExtensionEncoder.setSamplesToAverage(5);
@@ -217,6 +220,8 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("Back Left Motor Encoder Position", backLeftMotorEncoder.getPosition());
     SmartDashboard.putNumber("Back Left Motor Encoder Distance (rotations*2.23)", backLeftMotorEncoder.getPosition() * distancePerRotation);
 
+    //Camara to smartdashboard
+
     //Reports Gyros' axis angles  
     SmartDashboard.putNumber("The pitch axis of the Gyro (z axis): ", getAngleOfAxis(pitch));
     //SmartDashboard.putNumber("The yaw axis of the gyro (x axis): ", getAngleOfAxis(yaw));
@@ -242,9 +247,14 @@ public class Robot extends TimedRobot {
     // m_autoSelected = SmartDashboard.getString("Auto Selector", kDefaultAuto);
     System.out.println("Auto selected: " + m_autoSelected);
 
+    //sets timer to zero
+
     //sets all the positions of the encoders to 0
     frontLeftMotorEncoder.setPosition(0);
     frontRightMotorEncoder.setPosition(0);
+
+    //sets the gyro to zero.
+    gyro.setYawAxis(yaw);
   }
 
 
@@ -289,12 +299,26 @@ public class Robot extends TimedRobot {
   /* This method will balance the charging station once called.
    * 
    */
-  public void balance() {
-    while (getAngleOfAxis(pitch) > 10) {
-      driveTrain.arcadeDrive(0.25, 0);
-    }
-    while (getAngleOfAxis(pitch) < -10) {
-      driveTrain.arcadeDrive(-0.25, 0);
+  public void balance(boolean usingGyro) {
+    //Puts the robot in brake mode
+    frontLeftMotor.setIdleMode(IdleMode.kBrake);
+      backLeftMotor.setIdleMode(IdleMode.kBrake);
+      frontRightMotor.setIdleMode(IdleMode.kBrake);
+      backRightMotor.setIdleMode(IdleMode.kBrake);
+    if (usingGyro){
+      //balances useing the gyro
+      while (getAngleOfAxis(pitch) > 10) {
+        driveTrain.arcadeDrive(-0.25, 0);
+      }
+      while (getAngleOfAxis(pitch) < -10) {
+        driveTrain.arcadeDrive(0.25, 0);
+      }
+      while(getAngleOfAxis(pitch)> -10 && getAngleOfAxis(pitch) < 10){
+        driveTrain.arcadeDrive(0, 0);
+        bite(false, true, false);
+      }
+    } else {
+      driveTrain.arcadeDrive(0, 0);
     }
   }
 
@@ -311,9 +335,9 @@ public class Robot extends TimedRobot {
     if (isStill) { //Motor are still. Meaning they're not moving
       teeth.set(0);
     } else if (!isSpinOut) { //wheels spinning in
-      teeth.set(-intakeSpeed);
-    } else { //wheels going out
       teeth.set(intakeSpeed);
+    } else { //wheels going out
+      teeth.set(-intakeSpeed);
     }
   }
 
@@ -349,23 +373,26 @@ public class Robot extends TimedRobot {
     //Used to get the time at the time the method is called
     double startofMethod = Timer.getFPGATimestamp();
 
-    if (isHigh) {
+    /*if (isHigh) {
       //need to check the time. While the arm is shorter than the high node distance and time is more than 3 seconds.
-      while((armExtensionEncoder.getDistance() < highNodeDistance) || (Timer.getFPGATimestamp() - startofMethod < 3)) { 
+      while((armExtensionEncoder.getDistance() > highNodeDistance - 20) || (Timer.getFPGATimestamp() - startofMethod < 1)) { 
         armExtensionMotor.set(0.75); //Extends arm at speed of 0.75.
       }
     } else {
-      while ((armExtensionEncoder.getDistance() < middleNodeDistance) || (Timer.getFPGATimestamp() - startofMethod < 3)) { 
+      while ((armExtensionEncoder.getDistance() > middleNodeDistance - 20) || (Timer.getFPGATimestamp() - startofMethod < 1)) { 
         armExtensionMotor.set(0.75); //Extends arm at speed of 0.75.
       }
-    }
+    }*/
     
-    bite(false, false, true);// opens the intake
-
-    //retracts the arm until encoder postion is less than or time is 6sec.
-    while ((armExtensionEncoder.getDistance() < 1) || (Timer.getFPGATimestamp() - startofMethod < 6 )) { 
-      armExtensionMotor.set(-0.75);
+    
+    while(Timer.getFPGATimestamp() - startofMethod < 2){
+      bite(true, false, true);//spews the game peice
     }
+    bite(true, true, false);
+    //retracts the arm until encoder postion is less than or time is 6sec.
+    /*  while ((armExtensionEncoder.getDistance() < 1) || (Timer.getFPGATimestamp() - startofMethod < 6 )) { 
+      armExtensionMotor.set(-0.75);
+    }*/
   }
 
   /* Method for returning the encoder that has leased number of rotions.
@@ -387,9 +414,16 @@ public class Robot extends TimedRobot {
     double startofMethod = Timer.getFPGATimestamp();
 
     //drives the distance passed in by the parameter out of the community.
-    while ((distanceDriven().getPosition() * distancePerRotation < distance) && (Timer.getFPGATimestamp() - startofMethod  < 5)) { 
-      driveTrain.arcadeDrive(forwardController.calculate((distanceDriven().getPosition() * distancePerRotation), distance), 0);
+    if(distance < 0){
+      while ((frontLeftMotorEncoder.getPosition() * distancePerRotation > distance) && (Timer.getFPGATimestamp() - startofMethod  < 2.20)) { 
+      driveTrain.arcadeDrive(-0.6, 0);
+      }
+    } else {
+      while ((frontLeftMotorEncoder.getPosition() * distancePerRotation < distance) && (Timer.getFPGATimestamp() - startofMethod  < 2.20)) { 
+        driveTrain.arcadeDrive(0.6, 0);
+      }
     }
+    
   }
 
   /* Method that is an autonomous rotine. This would be selected in autonomous periodic
@@ -415,7 +449,10 @@ public class Robot extends TimedRobot {
     driveDistance(distanceToBalance - 24);
 
     //Using the gyro to balance
-    balance();
+    balance(false);
+
+    //Waits till the end of auto.
+    Timer.delay(Timer.getMatchTime());
   }
 
   /* Method that is an autonomous routine. This would be selected in autonomous periotic.
@@ -454,13 +491,32 @@ public class Robot extends TimedRobot {
     switch (m_autoSelected) {
       case kScoreDriveBackAuto:
         scoreDriveBack();
+        
         break;
+      case KDriveBack:
+        driveDistance(-distanceOutOfCommunity);
+        //Waits till Auto is over
+        Timer.delay(Timer.getFPGATimestamp());
+      break;
       case kScoreDriveBackScoreAuto:
         scoreDriveScore();
+        //Waits till Auto is over
+        Timer.delay(Timer.getFPGATimestamp());
         break;
       case kDefaultAuto:
+        scoreDriveBackBalance();
+        //Waits till Auto is over
+        Timer.delay(Timer.getFPGATimestamp());
+        break;
+      case kNothing:
+        armLevel(0);
+        //Waits till Auto is over
+        Timer.delay(Timer.getFPGATimestamp());
+        break;
       default:
         scoreDriveBackBalance();
+        //Waits till Auto is over
+        Timer.delay(Timer.getFPGATimestamp());
         break;
     }
   }
@@ -481,10 +537,10 @@ public class Robot extends TimedRobot {
     
     //Sets up the drive train. Left stick controls the forward and back. Right controls turning.
     //Want cubic function. currently linear. Look up deadbands
-    driveTrain.arcadeDrive(Math.pow(-blueController.getRawAxis(1), 3), Math.pow(blueController.getRawAxis(4), 3));
+    driveTrain.arcadeDrive(Math.pow(-blueController.getRawAxis(1), 3), Math.pow(-blueController.getRawAxis(4), 3));
 
     //need control for extention motor. This is the left y axis
-    armExtensionMotor.set(Math.pow(redController.getRawAxis(1), 3));
+    armExtensionMotor.set(Math.pow(-redController.getRawAxis(1), 3));
 
     //This bunch of if then statements is the button map. Blue controller is operator
     if (redController.getRawButton(1)) { // Button ✖️. Scoring position
@@ -511,11 +567,28 @@ public class Robot extends TimedRobot {
 
     //sets the rumble when the arm is within 0.25 rotion of middle and highNodeDistance
     if(armExtensionEncoder.getDistance() >= highNodeDistance - 0.25 && armExtensionEncoder.getDistance() <= highNodeDistance + 0.25){
-      redController.setRumble(RumbleType.kBothRumble, 1);
+      redController.setRumble(RumbleType.kBothRumble, 0.75);
+    } else if(armExtensionEncoder.getDistance() >= middleNodeDistance - 0.25 && armExtensionEncoder.getDistance() <= middleNodeDistance + 0.25){
+      redController.setRumble(RumbleType.kLeftRumble, 0.75);
+    } else {
+      redController.setRumble(RumbleType.kBothRumble, 0);
     }
 
     if(armExtensionEncoder.getDistance() >= middleNodeDistance - 0.25 && armExtensionEncoder.getDistance() <= middleNodeDistance + 0.25){
       redController.setRumble(RumbleType.kLeftRumble, 1);
+    }
+
+    //Set the break mode for drive train
+    if(blueController.getRawAxis(2) > 0.1){//L2 trigger
+      frontLeftMotor.setIdleMode(IdleMode.kBrake);
+      backLeftMotor.setIdleMode(IdleMode.kBrake);
+      frontRightMotor.setIdleMode(IdleMode.kBrake);
+      backRightMotor.setIdleMode(IdleMode.kBrake);
+    } else if(blueController.getRawAxis(3) > 0.1) {//R2 Trigger
+      frontLeftMotor.setIdleMode(IdleMode.kCoast);
+      backLeftMotor.setIdleMode(IdleMode.kCoast);
+      frontRightMotor.setIdleMode(IdleMode.kCoast);
+      backRightMotor.setIdleMode(IdleMode.kCoast);
     }
 
     bite(isClosed, isNotSpinning, isSpinningOut);// opens the intake;//controls the intake. false is open, true is closed*/
