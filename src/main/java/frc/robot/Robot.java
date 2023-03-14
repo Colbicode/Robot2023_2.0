@@ -39,9 +39,11 @@ import edu.wpi.first.wpilibj.Encoder;
 public class Robot extends TimedRobot {
   // Sets up autonomous routines.
   private static final String kDefaultAuto = "Default - score_drive_balance";
-  private static final String kScoreDriveBackAuto = "score_driveBack";
+  private static final String kScoreDriveBackShortAuto = "score_driveBack_short";
+  private static final String kScoreDriveBackLongAuto = "score_driveBack_long";
   private static final String KDriveBack = "Driveback";
   private static final String kScoreDriveBackScoreAuto = "score_driveBack_score";
+  private static final String kScore = "score";
   private static final String kNothing = "Nothing";
   private String m_autoSelected;
   private final SendableChooser<String> m_chooser = new SendableChooser<>();
@@ -115,11 +117,17 @@ public class Robot extends TimedRobot {
   //Distance to cone.
   public final double coneDistance = 10; //subject to change.
 
-  //sets the distance to travel to get out of community in autonomous
-  public final double distanceOutOfCommunity = 85; //Origanal: 225, test 2: 175, test 3: 90, test 4: 75 
+  //sets the distance to travel to get out of community in autonomous on the long side
+  public final double distanceOutOfCommunityLong = 90; //Original: 225, test 2: 175, test 3: 90, test 4: 75, test 5: 85 good, test 6: 90
+
+  //sets the distance to travel to get out of community in autonomous on the short side
+  public final double distanceOutOfCommunityShort = 80;
 
   //Max arm distance for manual arm control
   public final double maxArmExtensionDistance = 150; //NOTE: TBD
+
+  //Autonomous Length in Seconds
+  public final double autonomousLengthSeconds = 15;
 
   
   /* Other necessary variables */
@@ -155,10 +163,11 @@ public class Robot extends TimedRobot {
   public void robotInit() {
     //Sets up the options you see for auto on SmartDashboard.
     m_chooser.setDefaultOption("Default - score_drive_balance", kDefaultAuto);
-    m_chooser.addOption("score_driveBack", kScoreDriveBackAuto);
+    m_chooser.addOption("score_driveBack_short", kScoreDriveBackShortAuto);
+    m_chooser.addOption("score_driveBack_long", kScoreDriveBackLongAuto);
     m_chooser.addOption("Drive_back", KDriveBack);
     m_chooser.addOption("score_driveBack_score", kScoreDriveBackScoreAuto);
-    m_chooser.addOption("Nothing", kNothing);
+    m_chooser.addOption("Score", kScore);
     SmartDashboard.putData("Auto choices", m_chooser);
 
     //This is where we change the setInverted properties on the motors.
@@ -429,21 +438,24 @@ public class Robot extends TimedRobot {
   /* Method that is an autonomous rotine. This would be selected in autonomous periodic
    * Would score high and then drive backwards out of the community.
    */
-  public void scoreDriveBack() {
+  public void scoreDriveBack(boolean isLong) {
 
     //this method scores on the different levels. Right now it is used to score high. Ends retracted
     score(true);
     
-    //drives backward out of the community
-    driveDistance(-distanceOutOfCommunity);
+    if(isLong){
+      //drives backward out of the community
+      driveDistance(-distanceOutOfCommunityLong);
+    }
+    
   }
 
-  /* Method that is an autonomous routine. This would be selected in autonomous periotic
+  /* Method that is an autonomous routine. This would be selected in autonomous periodic
    * Would score high and then drive backwards out of the community. After that it drives forward to balance
    * on the charging station. 
    */
   public void scoreDriveBackBalance() {
-    scoreDriveBack();//runs scoreDrvieBack
+    scoreDriveBack(true);//runs scoreDriveBack
 
     //drives back to the charging station.
     driveDistance(distanceToBalance - 24);
@@ -452,7 +464,7 @@ public class Robot extends TimedRobot {
     balance(false);
 
     //Waits till the end of auto.
-    Timer.delay(Timer.getMatchTime());
+    Timer.delay(autonomousLengthSeconds - Timer.getMatchTime());
   }
 
   /* Method that is an autonomous routine. This would be selected in autonomous periotic.
@@ -461,7 +473,7 @@ public class Robot extends TimedRobot {
    * By far this is the most complicated one.
    */
   public void scoreDriveScore() {
-    scoreDriveBack();
+    scoreDriveBack(true);
 
     //turns the robot to the cone 
     while((getAngleOfAxis(yaw) < 90) && (Timer.getFPGATimestamp() < 5)) {
@@ -480,7 +492,7 @@ public class Robot extends TimedRobot {
     }
 
     //drives back to driver station and scores
-    driveDistance(distanceOutOfCommunity);
+    driveDistance(distanceOutOfCommunityLong);
     score(true);
   }
 
@@ -489,34 +501,38 @@ public class Robot extends TimedRobot {
   @Override
   public void autonomousPeriodic() {
     switch (m_autoSelected) {
-      case kScoreDriveBackAuto:
-        scoreDriveBack();
-        
+      case kScoreDriveBackLongAuto:
+        scoreDriveBack(true);
+        Timer.delay(Timer.getMatchTime());
         break;
-      case KDriveBack:
-        driveDistance(-distanceOutOfCommunity);
-        //Waits till Auto is over
-        Timer.delay(Timer.getFPGATimestamp());
-      break;
+
+      case kScoreDriveBackShortAuto:
+        scoreDriveBack(false);
+        Timer.delay(Timer.getMatchTime());
+        break;
+
       case kScoreDriveBackScoreAuto:
         scoreDriveScore();
         //Waits till Auto is over
-        Timer.delay(Timer.getFPGATimestamp());
+        Timer.delay(Timer.getMatchTime());
         break;
+
       case kDefaultAuto:
         scoreDriveBackBalance();
         //Waits till Auto is over
-        Timer.delay(Timer.getFPGATimestamp());
+        Timer.delay(Timer.getMatchTime());
         break;
-      case kNothing:
+
+      case kScore:
         armLevel(0);
         //Waits till Auto is over
-        Timer.delay(Timer.getFPGATimestamp());
+        Timer.delay(Timer.getMatchTime());
         break;
+        
       default:
         scoreDriveBackBalance();
         //Waits till Auto is over
-        Timer.delay(Timer.getFPGATimestamp());
+        Timer.delay(Timer.getMatchTime());
         break;
     }
   }
