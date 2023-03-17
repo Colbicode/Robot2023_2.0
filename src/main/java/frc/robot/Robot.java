@@ -12,6 +12,7 @@ import com.revrobotics.RelativeEncoder;
 import com.revrobotics.CANSparkMax.IdleMode;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 
+import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.GenericHID;
@@ -117,14 +118,10 @@ public class Robot extends TimedRobot {
   //Distance to cone.
   public final double coneDistance = 10; //subject to change.
 
-  //sets the distance to travel to get out of community in autonomous on the long side
-  public final double distanceOutOfCommunityLong = 90; //Original: 225, test 2: 175, test 3: 90, test 4: 75, test 5: 85 good, test 6: 90
 
-  //sets the distance to travel to get out of community in autonomous on the short side
-  public final double distanceOutOfCommunityShort = 80;
 
   //Max arm distance for manual arm control
-  public final double maxArmExtensionDistance = 150; //NOTE: TBD
+  public final double maxArmExtensionDistance = 203; //NOTE: TBD
 
   //Autonomous Length in Seconds
   public final double autonomousLengthSeconds = 15;
@@ -137,10 +134,10 @@ public class Robot extends TimedRobot {
   public boolean isSpinningOut;
 
   //Distance of middle scoring level. needs to be figured out.
-  public final double middleNodeDistance = 30;
+  public final double middleNodeDistance = 108;
 
   //Distance of the high node. In inches
-  public final double highNodeDistance = 150;
+  public final double highNodeDistance = 200; //Impossible unless thrown.
   
   //Length of robot frame for reference.
   public final double lengthOfRobot = 32; 
@@ -154,6 +151,14 @@ public class Robot extends TimedRobot {
   //intake speed
   public final double intakeSpeed = 0.75;
 
+  //Haft speed
+  public boolean halfSpeed = false;
+
+  //sets the distance to travel to get out of community in autonomous on the long side
+  public final double distanceOutOfCommunityLong = 225/distancePerRotation; //Original: 225, test 2: 175, test 3: 90, test 4: 75, test 5: 85 good, test 6: 90, test: 135 short, test 8: 190
+
+  //sets the distance to travel to get out of community in autonomous on the short side
+  public final double distanceOutOfCommunityShort = 156/distancePerRotation;  
   
   /*
    * This function is run when the robot is first started up and should be used
@@ -168,6 +173,7 @@ public class Robot extends TimedRobot {
     m_chooser.addOption("Drive_back", KDriveBack);
     m_chooser.addOption("score_driveBack_score", kScoreDriveBackScoreAuto);
     m_chooser.addOption("Score", kScore);
+    m_chooser.addOption("Do_Nothing", kNothing);
     SmartDashboard.putData("Auto choices", m_chooser);
 
     //This is where we change the setInverted properties on the motors.
@@ -205,6 +211,9 @@ public class Robot extends TimedRobot {
 
     //Make sure that it is in starting configuration.
     armLevel(0); 
+
+    //Sets up the Cammera
+    CameraServer.startAutomaticCapture();
   }
 
   /*
@@ -262,6 +271,12 @@ public class Robot extends TimedRobot {
     frontLeftMotorEncoder.setPosition(0);
     frontRightMotorEncoder.setPosition(0);
 
+    //sets it to brake mode
+    frontLeftMotor.setIdleMode(IdleMode.kBrake);
+    backLeftMotor.setIdleMode(IdleMode.kBrake);
+    frontRightMotor.setIdleMode(IdleMode.kBrake);
+    backRightMotor.setIdleMode(IdleMode.kBrake);
+
     //sets the gyro to zero.
     gyro.setYawAxis(yaw);
   }
@@ -290,6 +305,11 @@ public class Robot extends TimedRobot {
       case 2: //Scoring Level Configuration
         firstStage.set(Value.kForward);
         secondStage.set(Value.kReverse);
+        break;
+      
+      case 3://just higher than scoring level
+        firstStage.set(Value.kReverse);
+        secondStage.set(Value.kForward);
         break;
 
       default:
@@ -322,7 +342,7 @@ public class Robot extends TimedRobot {
       while (getAngleOfAxis(pitch) < -10) {
         driveTrain.arcadeDrive(0.25, 0);
       }
-      while(getAngleOfAxis(pitch)> -10 && getAngleOfAxis(pitch) < 10){
+      while(getAngleOfAxis(pitch) > -10 && getAngleOfAxis(pitch) < 10){
         driveTrain.arcadeDrive(0, 0);
         bite(false, true, false);
       }
@@ -374,7 +394,7 @@ public class Robot extends TimedRobot {
   /* This method will be used to score on the middle or high nodes during autonomous.
    * @param boolean isHigh is used to say if it is going high or not.
    */
-  public void score(boolean isHigh){
+  public void score(boolean isHigh) {
 
     //used to score the game peices on certain levels.
     armLevel(2); //arm to scoring level
@@ -394,7 +414,7 @@ public class Robot extends TimedRobot {
     }*/
     
     
-    while(Timer.getFPGATimestamp() - startofMethod < 2){
+    while(Timer.getFPGATimestamp() - startofMethod < 2) {
       bite(true, false, true);//spews the game peice
     }
     bite(true, true, false);
@@ -417,18 +437,18 @@ public class Robot extends TimedRobot {
   /* Method for driving a certain distance. Uses the .getPosition() from an encoder to return the number of rotations.
    * @param distance for the distance for the robot to drive.
    */
-  public void driveDistance(double distance){
+  public void driveDistance(double distance) {
 
     //Used to get the time at the time the method is called
     double startofMethod = Timer.getFPGATimestamp();
 
     //drives the distance passed in by the parameter out of the community.
     if(distance < 0){
-      while ((frontLeftMotorEncoder.getPosition() * distancePerRotation > distance) && (Timer.getFPGATimestamp() - startofMethod  < 2.20)) { 
+      while ((frontLeftMotorEncoder.getPosition() * distancePerRotation > distance) && (Timer.getFPGATimestamp() - startofMethod  < 5)) { 
       driveTrain.arcadeDrive(-0.6, 0);
       }
     } else {
-      while ((frontLeftMotorEncoder.getPosition() * distancePerRotation < distance) && (Timer.getFPGATimestamp() - startofMethod  < 2.20)) { 
+      while ((frontLeftMotorEncoder.getPosition() * distancePerRotation < distance) && (Timer.getFPGATimestamp() - startofMethod  < 5)) { 
         driveTrain.arcadeDrive(0.6, 0);
       }
     }
@@ -446,6 +466,9 @@ public class Robot extends TimedRobot {
     if(isLong){
       //drives backward out of the community
       driveDistance(-distanceOutOfCommunityLong);
+    } else {
+      //drives the short distance out of the community
+      driveDistance(-distanceOutOfCommunityShort);
     }
     
   }
@@ -476,7 +499,7 @@ public class Robot extends TimedRobot {
     scoreDriveBack(true);
 
     //turns the robot to the cone 
-    while((getAngleOfAxis(yaw) < 90) && (Timer.getFPGATimestamp() < 5)) {
+    while ((getAngleOfAxis(yaw) < 90) && (Timer.getFPGATimestamp() < 5)) {
       driveTrain.arcadeDrive(0, angleController.calculate(getAngleOfAxis(yaw), angleToGrabCone));
     }
     
@@ -487,13 +510,17 @@ public class Robot extends TimedRobot {
     bite(true, false, false);// opens the intake
 
     //turns back to driver's station
-    while((getAngleOfAxis(yaw) < 135) && (Timer.getFPGATimestamp() < 5)){
+    while((getAngleOfAxis(yaw) < 135) && (Timer.getFPGATimestamp() < 5)) {
       driveTrain.arcadeDrive(0, angleController.calculate(getAngleOfAxis(yaw), angleToDriveBack));
     }
 
     //drives back to driver station and scores
     driveDistance(distanceOutOfCommunityLong);
     score(true);
+  }
+
+  public void nothing() {
+    Timer.delay(autonomousLengthSeconds - Timer.getMatchTime());
   }
 
 
@@ -545,6 +572,9 @@ public class Robot extends TimedRobot {
     backLeftMotor.setIdleMode(IdleMode.kCoast);
     frontRightMotor.setIdleMode(IdleMode.kCoast);
     backRightMotor.setIdleMode(IdleMode.kCoast);
+
+    //Make sure that the robot is in full speed.
+    halfSpeed = false;
   }
 
   /* This function is called periodically during operator control. */
@@ -553,7 +583,17 @@ public class Robot extends TimedRobot {
     
     //Sets up the drive train. Left stick controls the forward and back. Right controls turning.
     //Want cubic function. currently linear. Look up deadbands
-    driveTrain.arcadeDrive(Math.pow(-blueController.getRawAxis(1), 3), Math.pow(-blueController.getRawAxis(4), 3));
+    if (blueController.getRawButton(5)) { //L1 half speed.
+      halfSpeed = true;
+    } else if (blueController.getRawButton(6)) {// R1 full speed
+      halfSpeed = false;
+    }
+
+    if (halfSpeed) { // if haft speed is true half 
+      driveTrain.arcadeDrive(Math.pow(-blueController.getRawAxis(1), 3)/2, Math.pow(-blueController.getRawAxis(4), 3)/2);
+    } else {
+      driveTrain.arcadeDrive(Math.pow(-blueController.getRawAxis(1), 3), Math.pow(-blueController.getRawAxis(4), 3));
+    }
 
     //need control for extention motor. This is the left y axis
     armExtensionMotor.set(Math.pow(-redController.getRawAxis(1), 3));
@@ -565,42 +605,44 @@ public class Robot extends TimedRobot {
       armLevel(1);
     } else if (redController.getRawButton(3)) { // Button 🟪. Starting configeration
       armLevel(0);
+    } else if (redController.getRawButton(4)) {// Button triangle. Just higher than Scoring.
+      armLevel(3);
     } else if (redController.getRawButton(5)) { // Button L1. Intake is open
       isClosed = true;
     } else if (redController.getRawButton(6)) { // Button R1. Intake is closed
       isClosed = false;
     } 
 
-    if (redController.getRawAxis(2) > 0.1) {//This sets the varibles for the wheels to spin out. Is left trigger
+    if (redController.getRawAxis(2) > 0.1) { //This sets the variables for the wheels to spin out. Is left trigger (L2)
       isNotSpinning = false;
       isSpinningOut = true;
-    } else if (redController.getRawAxis(3) > 0.1) {//This set the varible for the wheels to spin in. Is right trigger
+    } else if (redController.getRawAxis(3) > 0.1) { //This sets the variable for the wheels to spin in. Is right trigger (R2)
       isNotSpinning = false;
       isSpinningOut = false;
-    } else {
+    } else { //Wheels not moving.
       isNotSpinning = true;
     }
 
-    //sets the rumble when the arm is within 0.25 rotion of middle and highNodeDistance
-    if(armExtensionEncoder.getDistance() >= highNodeDistance - 0.25 && armExtensionEncoder.getDistance() <= highNodeDistance + 0.25){
+    //Sets the rumble when the arm is within 0.25 rotation of middle and highNodeDistance.
+    if (armExtensionEncoder.getDistance() >= highNodeDistance - 3 && armExtensionEncoder.getDistance() <= highNodeDistance + 3) {
       redController.setRumble(RumbleType.kBothRumble, 0.75);
-    } else if(armExtensionEncoder.getDistance() >= middleNodeDistance - 0.25 && armExtensionEncoder.getDistance() <= middleNodeDistance + 0.25){
+    } else if (armExtensionEncoder.getDistance() >= middleNodeDistance - 3 && armExtensionEncoder.getDistance() <= middleNodeDistance + 3){
       redController.setRumble(RumbleType.kLeftRumble, 0.75);
     } else {
       redController.setRumble(RumbleType.kBothRumble, 0);
     }
 
-    if(armExtensionEncoder.getDistance() >= middleNodeDistance - 0.25 && armExtensionEncoder.getDistance() <= middleNodeDistance + 0.25){
+    if (armExtensionEncoder.getDistance() >= middleNodeDistance - 0.25 && armExtensionEncoder.getDistance() <= middleNodeDistance + 0.25) {
       redController.setRumble(RumbleType.kLeftRumble, 1);
     }
 
     //Set the break mode for drive train
-    if(blueController.getRawAxis(2) > 0.1){//L2 trigger
+    if (blueController.getRawAxis(2) > 0.1) { //L2 Trigger
       frontLeftMotor.setIdleMode(IdleMode.kBrake);
       backLeftMotor.setIdleMode(IdleMode.kBrake);
       frontRightMotor.setIdleMode(IdleMode.kBrake);
       backRightMotor.setIdleMode(IdleMode.kBrake);
-    } else if(blueController.getRawAxis(3) > 0.1) {//R2 Trigger
+    } else if (blueController.getRawAxis(3) > 0.1) { //R2 Trigger
       frontLeftMotor.setIdleMode(IdleMode.kCoast);
       backLeftMotor.setIdleMode(IdleMode.kCoast);
       frontRightMotor.setIdleMode(IdleMode.kCoast);
