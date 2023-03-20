@@ -397,31 +397,38 @@ public class Robot extends TimedRobot {
   public void score(boolean isHigh) {
 
     //used to score the game peices on certain levels.
-    armLevel(2); //arm to scoring level
+    armLevel(3); //arm to scoring level
     
     //Used to get the time at the time the method is called
     double startofMethod = Timer.getFPGATimestamp();
 
-    /*if (isHigh) {
+    //Settling delay.
+    Timer.delay(1);
+
+    if (isHigh) {
       //need to check the time. While the arm is shorter than the high node distance and time is more than 3 seconds.
-      while((armExtensionEncoder.getDistance() > highNodeDistance - 20) || (Timer.getFPGATimestamp() - startofMethod < 1)) { 
+      while((armExtensionEncoder.getDistance() < highNodeDistance - 20) /*|| (Timer.getFPGATimestamp() - startofMethod < 1)*/) { 
         armExtensionMotor.set(0.75); //Extends arm at speed of 0.75.
       }
     } else {
-      while ((armExtensionEncoder.getDistance() > middleNodeDistance - 20) || (Timer.getFPGATimestamp() - startofMethod < 1)) { 
+      while ((armExtensionEncoder.getDistance() < middleNodeDistance - 20) /*|| (Timer.getFPGATimestamp() - startofMethod < 1)*/) { 
         armExtensionMotor.set(0.75); //Extends arm at speed of 0.75.
       }
-    }*/
-    
-    
-    while(Timer.getFPGATimestamp() - startofMethod < 2) {
-      bite(true, false, true);//spews the game peice
     }
-    bite(true, true, false);
+    
+    //slop delay
+    Timer.delay(0.5);
+    
+    bite(true, false, true);//spews the game piece
+    
+    Timer.delay(1);
+
+    bite(true, true, false); //stops spew
+
     //retracts the arm until encoder postion is less than or time is 6sec.
-    /*  while ((armExtensionEncoder.getDistance() < 1) || (Timer.getFPGATimestamp() - startofMethod < 6 )) { 
+    while ((armExtensionEncoder.getDistance() > 20) /*|| (Timer.getFPGATimestamp() - startofMethod < 6 )*/) { 
       armExtensionMotor.set(-0.75);
-    }*/
+    }
   }
 
   /* Method for returning the encoder that has leased number of rotions.
@@ -440,15 +447,15 @@ public class Robot extends TimedRobot {
   public void driveDistance(double distance) {
 
     //Used to get the time at the time the method is called
-    double startofMethod = Timer.getFPGATimestamp();
+    //double startofMethod = Timer.getFPGATimestamp();
 
     //drives the distance passed in by the parameter out of the community.
-    if(distance < 0){
-      while ((frontLeftMotorEncoder.getPosition() * distancePerRotation > distance) && (Timer.getFPGATimestamp() - startofMethod  < 5)) { 
-      driveTrain.arcadeDrive(-0.6, 0);
+    if (distance < 0) {
+      while ((frontLeftMotorEncoder.getPosition() * distancePerRotation > distance) /*&& (Timer.getFPGATimestamp() - startofMethod  < 5)*/) { 
+        driveTrain.arcadeDrive(-0.6, 0);
       }
     } else {
-      while ((frontLeftMotorEncoder.getPosition() * distancePerRotation < distance) && (Timer.getFPGATimestamp() - startofMethod  < 5)) { 
+      while ((frontLeftMotorEncoder.getPosition() * distancePerRotation < distance)/* && (Timer.getFPGATimestamp() - startofMethod  < 5)*/) { 
         driveTrain.arcadeDrive(0.6, 0);
       }
     }
@@ -589,8 +596,8 @@ public class Robot extends TimedRobot {
       halfSpeed = false;
     }
 
-    if (halfSpeed) { // if haft speed is true half 
-      driveTrain.arcadeDrive(Math.pow(-blueController.getRawAxis(1), 3)/2, Math.pow(-blueController.getRawAxis(4), 3)/2);
+    if (halfSpeed) { // if half speed is true
+      driveTrain.arcadeDrive(-blueController.getRawAxis(1)/2, -blueController.getRawAxis(4)/2);
     } else {
       driveTrain.arcadeDrive(Math.pow(-blueController.getRawAxis(1), 3), Math.pow(-blueController.getRawAxis(4), 3));
     }
