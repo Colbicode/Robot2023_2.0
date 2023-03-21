@@ -118,8 +118,6 @@ public class Robot extends TimedRobot {
   //Distance to cone.
   public final double coneDistance = 10; //subject to change.
 
-
-
   //Max arm distance for manual arm control
   public final double maxArmExtensionDistance = 203; //NOTE: TBD
 
@@ -149,16 +147,20 @@ public class Robot extends TimedRobot {
   public final double distancePerRotation = 2.23;
 
   //intake speed
-  public final double intakeSpeed = 0.75;
+  public final double intakeSpeed = 0.75;//Do we want this at 1?
 
   //Haft speed
   public boolean halfSpeed = false;
 
   //sets the distance to travel to get out of community in autonomous on the long side
-  public final double distanceOutOfCommunityLong = 225/distancePerRotation; //Original: 225, test 2: 175, test 3: 90, test 4: 75, test 5: 85 good, test 6: 90, test: 135 short, test 8: 190
+  public final double distanceOutOfCommunityLong = 200; //Original: 225, test 2: 175, test 3: 90, test 4: 75, test 5: 85 good, 
+  //test 6: 90, test: 135 short, test 8: 190, test 9: 200
+  //distance out of community plus six inches is 198 in inches. This includes the grid
 
   //sets the distance to travel to get out of community in autonomous on the short side
-  public final double distanceOutOfCommunityShort = 156/distancePerRotation;  
+  public final double distanceOutOfCommunityShort = 140;  //Original: 156, test 1: 140
+  //distance out of the community on the short side plus six inches is 138. This includes the grid
+
   
   /*
    * This function is run when the robot is first started up and should be used
@@ -336,15 +338,22 @@ public class Robot extends TimedRobot {
       backRightMotor.setIdleMode(IdleMode.kBrake);
     if (usingGyro){
       //balances useing the gyro
-      while (getAngleOfAxis(pitch) > 10) {
+      while (getAngleOfAxis(pitch) > 10) {//if it has a positive pitch forward then slowly backs up
         driveTrain.arcadeDrive(-0.25, 0);
       }
-      while (getAngleOfAxis(pitch) < -10) {
+      while (getAngleOfAxis(pitch) < -10) {//if it has a negative pitch backward then slowly goes forward
         driveTrain.arcadeDrive(0.25, 0);
       }
       while(getAngleOfAxis(pitch) > -10 && getAngleOfAxis(pitch) < 10){
         driveTrain.arcadeDrive(0, 0);
         bite(false, true, false);
+        
+        //Could add recursion in this bit. Have a two second delay then run this method agin. 
+        //It would have to turminate with time.
+        /*Timer.delay(2);
+        if(Timer.getMatchTime() > 5){
+          balance(true);
+        }example*/
       }
     } else {
       driveTrain.arcadeDrive(0, 0);
